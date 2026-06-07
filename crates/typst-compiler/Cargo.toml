@@ -1,0 +1,13 @@
+[package]
+name = "typst-compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typst = "0.14"
+typst-pdf = "0.14"
+typst-assets = { version = "0.14", features = ["fonts"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+chrono = "0.4"

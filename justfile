@@ -28,3 +28,7 @@ dev:
     npx concurrently \
       "cd apps/api && cargo run" \
       "cd apps/web && npm run dev"
+
+# Build typst-compiler to Wasm (verifies Wasm compatibility)
+build-wasm:
+    cargo build --target wasm32-unknown-unknown -p typst-compiler

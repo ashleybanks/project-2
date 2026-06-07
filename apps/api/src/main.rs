@@ -1,7 +1,8 @@
 use axum::{
     extract::Extension,
+    http::header,
     middleware,
-    response::Json,
+    response::{IntoResponse, Json, Response},
     routing::get,
     Router,
 };
@@ -61,6 +62,7 @@ async fn main() {
         .merge(protected)
         .nest("/api/auth", auth::router(state.clone()))
         .route("/api/health", get(health))
+        .route("/api/render/test", get(render_test))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
@@ -70,6 +72,37 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn render_test() -> Response {
+    use typst_compiler::{compile, render};
+    use serde_json::json;
+
+    let payload = json!({
+        "customer": { "name": "Acme Corp" },
+        "invoice": {
+            "number": "INV-2026-001",
+            "status": "paid",
+            "items": [
+                { "description": "Consulting (10h)", "unit_price": 1500.00 },
+                { "description": "Expenses",          "unit_price": 87.50  }
+            ]
+        }
+    });
+
+    let model = typst_compiler::model::spike_model();
+    let source = compile(&model);
+
+    match render(&source, &payload) {
+        Ok(pdf_bytes) => (
+            [(header::CONTENT_TYPE, "application/pdf")],
+            pdf_bytes,
+        ).into_response(),
+        Err(e) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        ).into_response(),
+    }
 }
 
 async fn health() -> Json<serde_json::Value> {

@@ -1,0 +1,58 @@
+schema: spec-driven
+
+context: |
+  Project: Visual Block-Based PDF Template Builder — "Notion meets Canva for data-driven PDFs."
+  A SaaS tool for document generation: non-technical users build templates via a drag-and-drop
+  block canvas; structured data payloads are merged at runtime to produce high-quality PDFs.
+
+  ## Tech stack
+  - Backend: Rust + Axum (on Tokio)
+  - Frontend: React + TypeScript
+  - Auth: Better Auth TS SDK on frontend; pure Rust backend (argon2 + sqlx + custom sessions table). Cookie: `better-auth.session_token` (HTTP-only). See ADR-011.
+  - Typst: `typst` + `typst-pdf` Rust crates — in-process PDF rendering, no subprocess
+  - Typst Wasm: same Rust code compiled to Wasm for in-browser PDF preview
+  - Transactional DB: PostgreSQL (JSONB for block model and schema; GIN indexes for field queries)
+  - Job queue: PostgreSQL (pgmq / SKIP LOCKED) — async PDF render jobs
+  - Analytical DB: ClickHouse (Phase 2 — usage metrics, LLM cost tracking, billing)
+  - Local LLM: Qwen3-8B via Ollama (server-side); cloud API (Anthropic/OpenAI) as fallback
+  - Monorepo structure (frontend + backend in one repo)
+
+  ## Domain concepts
+  - Block model: JSON representation of a template (canonical; compiled to Typst on save)
+  - Flow blocks: Text, Table, Image, Repeating Section, Conditional Section, Divider
+  - Pin blocks: Header, Footer, Logo, Page Number, Signature Block (anchored to page frame)
+  - Schema: derived from uploaded sample data (CSV/Excel/JSON); not defined upfront
+  - Schema mapping layer: raw payload keys → display names → template placeholders
+  - Condition tree: parsed JSON representation of block visibility rules (canonical storage)
+  - Liquid: used internally as LLM generation target for conditions; never user-facing
+  - Condition label: rule-based human-readable label synthesised from condition tree
+  - Journey A: Data & Schema setup (one-time); Journey B: Template build (one-time)
+  - Journey C: Merge (recurring) — payload submitted → validated → rendered → PDF → webhook
+  - Workspace modes: Build / Preview / Data (not simultaneous panels)
+
+  ## Architecture decisions (accepted)
+  - Typst as render target (in-process via Rust crates)
+  - Block model JSON as canonical template storage, compiled to Typst on save
+  - Schema derived from sample data, versioned, breaks loudly on mismatch
+  - Liquid as internal LLM condition target; condition tree as canonical storage
+  - Qwen3-8B via Ollama as default LLM; cloud API per-surface fallback
+  - Empty-state slot built into Repeating Section block
+  - Async job model with webhook callbacks
+  - B2C first; B2B platform (API, webhooks, batch, embeddable widget) layered on top
+
+  ## Conventions
+  - Conventional commits
+  - Rust: standard formatting (rustfmt), Clippy clean
+  - TypeScript: strict mode, ESLint
+  - API: REST (Axum); JSON request/response bodies; snake_case field names
+  - Errors: structured JSON errors with human-readable messages (LLM-translated where helpful)
+  - Tasks should be independently completable and include a clear acceptance criterion
+
+rules:
+  proposal:
+    - Include a "Non-goals" section to keep scope tight
+    - State which implementation phase this belongs to
+  tasks:
+    - Each task should be completable in a single focused session
+    - Include an acceptance criterion for each task
+    - Flag any tasks that require a decision before starting with [DECISION NEEDED]

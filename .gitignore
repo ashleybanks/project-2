@@ -1,0 +1,18 @@
+# Environment
+.env
+.env.local
+
+# Rust
+apps/api/target/
+
+# Node
+apps/web/node_modules/
+apps/web/dist/
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
+
+# sqlx
+apps/api/.sqlx/

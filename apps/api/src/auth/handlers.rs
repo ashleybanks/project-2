@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{AppState, error::AppError};
 use super::session::{self, COOKIE_NAME};
@@ -124,6 +125,36 @@ fn session_cookie(token: &str, secure: bool) -> String {
         30 * 24 * 3600,
         secure_flag,
     )
+}
+
+/// GET /api/auth/session — returns the current session in Better Auth format.
+/// Returns null when no valid session exists (SDK treats null as unauthenticated).
+pub async fn get_session(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Json<serde_json::Value> {
+    let Some(token) = extract_token(&headers) else {
+        return Json(json!(null));
+    };
+    match session::validate(&state.db, &token).await {
+        Ok(sess) => Json(json!({
+            "session": {
+                "id":        sess.session_id,
+                "userId":    sess.user_id,
+                "expiresAt": sess.expires_at,
+                "token":     token,
+            },
+            "user": {
+                "id":            sess.user_id,
+                "email":         sess.email,
+                "name":          sess.name,
+                "emailVerified": false,
+                "createdAt":     sess.created_at,
+                "updatedAt":     sess.created_at,
+            }
+        })),
+        Err(_) => Json(json!(null)),
+    }
 }
 
 pub fn extract_token(headers: &HeaderMap) -> Option<String> {

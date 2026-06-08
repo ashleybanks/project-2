@@ -20,6 +20,12 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("File too large (max 10MB)")]
+    FileTooLarge,
+
+    #[error("DOCX parse failed: {0}")]
+    DocxParseFailed(String),
 }
 
 impl IntoResponse for AppError {
@@ -36,6 +42,11 @@ impl IntoResponse for AppError {
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
+            AppError::FileTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, self.to_string()),
+            AppError::DocxParseFailed(msg) => {
+                tracing::warn!("DOCX parse failed: {msg}");
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
         };
 

@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: Props) {
   const { data: session, isPending } = useSession();
   const location = useLocation();
 
-  if (isPending) return null; // avoid flash of redirect while session loads
+  if (isPending) return null;
 
   if (!session?.user) {
     return <Navigate to={`/sign-in?redirect=${encodeURIComponent(location.pathname)}`} replace />;

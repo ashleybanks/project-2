@@ -1,6 +1,6 @@
 use axum::{
     extract::Extension,
-    http::header,
+    http::{header, HeaderValue, Method},
     middleware,
     response::{IntoResponse, Json, Response},
     routing::get,
@@ -13,7 +13,9 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod auth;
+mod docx;
 mod error;
+mod templates;
 
 pub use error::AppError;
 
@@ -53,6 +55,7 @@ async fn main() {
     // Protected routes — require a valid session
     let protected = Router::new()
         .route("/api/me", get(me))
+        .nest("/api/templates", templates::router(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::middleware::require_auth,
@@ -63,7 +66,18 @@ async fn main() {
         .nest("/api/auth", auth::router(state.clone()))
         .route("/api/health", get(health))
         .route("/api/render/test", get(render_test))
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(
+                    std::env::var("CORS_ORIGIN")
+                        .unwrap_or_else(|_| "http://localhost:5173".into())
+                        .parse::<HeaderValue>()
+                        .expect("invalid CORS_ORIGIN"),
+                )
+                .allow_credentials(true)
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+                .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::COOKIE]),
+        )
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

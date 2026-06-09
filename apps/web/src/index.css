@@ -12,6 +12,17 @@
   --font-sans:    'Figtree', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Figtree', ui-sans-serif, system-ui, sans-serif;
 
+  /* 8px-grid type scale — sizes and paired line-heights */
+  --text-xs:   0.75rem;   /* 12px / 16px — captions, timestamps, meta only */
+  --text-sm:   0.875rem;  /* 14px / 20px — secondary labels */
+  --text-base: 1rem;      /* 16px / 24px — body default */
+  --text-lg:   1.125rem;  /* 18px / 28px */
+  --text-xl:   1.25rem;   /* 20px / 32px */
+  --text-2xl:  1.5rem;    /* 24px / 32px */
+  --text-3xl:  1.875rem;  /* 30px / 40px */
+  --text-4xl:  2.25rem;   /* 36px / 48px */
+  --text-5xl:  3rem;      /* 48px / 56px */
+
   --color-background:        var(--background);
   --color-foreground:        var(--foreground);
   --color-card:              var(--card);
@@ -88,16 +99,20 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: 16px; /* 1rem = 16px = 2×8px grid anchor */
+  }
   body {
     @apply bg-background text-foreground font-sans;
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 1rem;
+    line-height: 1.5; /* 24px = 3×8px */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 600;
+    line-height: 1.25;
     margin: 0;
   }
   p { margin: 0; }

@@ -95,10 +95,23 @@ function pmNodeToTopLevel(node: PmNode): PtTopLevel | null {
       _key: (node.attrs?.key as string) ?? newKey(),
       conditionIntent: (node.attrs?.conditionIntent as string) ?? undefined,
       repeatIntent: (node.attrs?.repeatIntent as string) ?? undefined,
-      content: (node.content ?? []).map(pmNodeToPtBlock).filter(Boolean) as PtBlock[],
+      content: extractPtBlocks(node.content ?? []),
     } satisfies PtSection;
   }
   return pmNodeToPtBlock(node);
+}
+
+function extractPtBlocks(nodes: PmNode[]): PtBlock[] {
+  const blocks: PtBlock[] = [];
+  for (const n of nodes) {
+    if (n.type === "section") {
+      blocks.push(...extractPtBlocks(n.content ?? []));
+    } else {
+      const b = pmNodeToPtBlock(n);
+      if (b) blocks.push(b);
+    }
+  }
+  return blocks;
 }
 
 function pmNodeToPtBlock(node: PmNode): PtBlock | null {

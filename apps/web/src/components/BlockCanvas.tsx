@@ -39,7 +39,7 @@ export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
     },
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[60vh] prose prose-sm max-w-none prose-zinc focus:outline-none",
+        class: "outline-none min-h-[60vh] prose max-w-none prose-zinc focus:outline-none",
       },
       handleContextMenu: (view, event) => {
         // Suppress browser context menu; we handle it ourselves
@@ -64,9 +64,17 @@ export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
     if (type === "field") {
       editor.chain().focus().setFieldIntent(label).run();
     } else if (type === "condition") {
-      editor.chain().focus().wrapInSection({ conditionIntent: label }).run();
+      if (isInsideSection(editor)) {
+        editor.chain().focus().setConditionIntent(label).run();
+      } else {
+        editor.chain().focus().wrapInSection({ conditionIntent: label }).run();
+      }
     } else {
-      editor.chain().focus().wrapInSection({ repeatIntent: label }).run();
+      if (isInsideSection(editor)) {
+        editor.chain().focus().setRepeatIntent(label).run();
+      } else {
+        editor.chain().focus().wrapInSection({ repeatIntent: label }).run();
+      }
     }
     setIntentPopover(null);
   }
@@ -136,7 +144,16 @@ interface IntentPopoverState {
   mode: "toolbar" | "contextmenu";
 }
 
-// ── Selection kind helper ─────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isInsideSection(editor: ReturnType<typeof useEditor>): boolean {
+  if (!editor) return false;
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d >= 0; d--) {
+    if ($from.node(d).type.name === "section") return true;
+  }
+  return false;
+}
 
 function getSelectionKind(editor: ReturnType<typeof useEditor> | null) {
   if (!editor) return { isInline: true, isMultiParagraph: false };

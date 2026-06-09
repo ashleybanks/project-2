@@ -55,8 +55,8 @@ export default function StylesheetsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-white px-6 py-3 flex items-center gap-4">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <header className="border-b border-border bg-white px-6 py-3 flex items-center gap-4 shrink-0">
         <button
           onClick={() => navigate(-1)}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -69,8 +69,8 @@ export default function StylesheetsPage() {
         </span>
       </header>
 
-      <main className="max-w-md mx-auto px-6 py-10">
-        <p className="text-xs text-muted-foreground mb-6">
+      <main className="flex-1 overflow-auto max-w-md mx-auto w-full px-6 py-10">
+        <p className="text-sm text-muted-foreground mb-6">
           Brand rules seed the stylesheet for every new template. Existing templates are unaffected.
         </p>
 

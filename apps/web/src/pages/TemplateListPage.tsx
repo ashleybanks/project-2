@@ -19,7 +19,7 @@ export default function TemplateListPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 overflow-auto">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -32,10 +32,10 @@ export default function TemplateListPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-base text-muted-foreground">Loading…</p>
         ) : templates.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-border rounded-lg">
-            <p className="text-muted-foreground text-sm mb-4">No templates yet</p>
+            <p className="text-muted-foreground text-base mb-4">No templates yet</p>
             <Button variant="outline" onClick={() => navigate("/app/templates/new")}>
               Create your first template
             </Button>
@@ -50,7 +50,7 @@ export default function TemplateListPage() {
                     onClick={() => navigate(`/app/templates/${t.id}`)}
                     className="flex-1 text-left"
                   >
-                    <span className="text-sm font-medium">{t.name}</span>
+                    <span className="text-base font-medium">{t.name}</span>
                     <span className="text-xs text-muted-foreground ml-3">
                       Updated {new Date(t.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </span>

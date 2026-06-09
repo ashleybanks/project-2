@@ -42,11 +42,11 @@ export default function NewTemplatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 overflow-auto">
       <div className="max-w-2xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">New template</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Start blank or import an existing document</p>
+          <p className="text-base text-muted-foreground mt-0.5">Start blank or import an existing document</p>
         </div>
 
         <div className="space-y-2 mb-8">

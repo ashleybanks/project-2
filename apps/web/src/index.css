@@ -68,6 +68,20 @@
   --radius: 0.5rem;
 }
 
+/* ── Section node visual annotations ─────────────────────── */
+
+.section-node {
+  position: relative;
+}
+
+.section-node--annotated {
+  border-left: 3px solid var(--primary);
+  padding-left: 0.75rem;
+  margin-left: -0.75rem;
+  background-color: oklch(0.545 0.165 41 / 0.04);
+  border-radius: 0 4px 4px 0;
+}
+
 /* ── Base ─────────────────────────────────────────────────── */
 
 @layer base {

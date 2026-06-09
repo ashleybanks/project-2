@@ -15,6 +15,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod auth;
 mod docx;
 mod error;
+mod stylesheets;
 mod templates;
 
 pub use error::AppError;
@@ -56,6 +57,7 @@ async fn main() {
     let protected = Router::new()
         .route("/api/me", get(me))
         .nest("/api/templates", templates::router(state.clone()))
+        .nest("/api/stylesheets", stylesheets::router(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::middleware::require_auth,

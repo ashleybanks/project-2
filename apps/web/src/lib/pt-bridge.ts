@@ -1,15 +1,31 @@
-import type { PtBlock, PtChild, PtSpan, PtFieldIntent } from "./api";
+import type { PtBlock, PtSection, PtTopLevel, PtChild, PtSpan, PtFieldIntent } from "./api";
 
 // ── PT → ProseMirror ──────────────────────────────────────────────────────────
 
-export function ptToProsemirror(blocks: PtBlock[]): object {
+export function ptToProsemirror(blocks: PtTopLevel[]): object {
   return {
     type: "doc",
-    content: blocks.map(ptBlockToPm),
+    content: blocks.map(ptTopLevelToPm).filter(Boolean),
   };
 }
 
-function ptBlockToPm(block: PtBlock): object {
+function ptTopLevelToPm(entry: PtTopLevel): object | null {
+  if (entry._type === "section") {
+    const section = entry as PtSection;
+    return {
+      type: "section",
+      attrs: {
+        conditionIntent: section.conditionIntent ?? null,
+        repeatIntent: section.repeatIntent ?? null,
+        key: section._key,
+      },
+      content: section.content.map(ptBlockToPm).filter(Boolean),
+    };
+  }
+  return ptBlockToPm(entry as PtBlock);
+}
+
+function ptBlockToPm(block: PtBlock): object | null {
   const isHeading = ["h1", "h2", "h3"].includes(block.style);
   if (isHeading) {
     const level = parseInt(block.style.slice(1));
@@ -60,16 +76,29 @@ function markToPm(mark: string): object | null {
 let keyCounter = 1;
 function newKey() { return `k${keyCounter++}`; }
 
-export function prosemirrorToPt(doc: { content?: PmNode[] }): PtBlock[] {
-  return (doc.content ?? []).map(pmNodeToPtBlock).filter(Boolean) as PtBlock[];
-}
-
 interface PmNode {
   type: string;
   attrs?: Record<string, unknown>;
   content?: PmNode[];
   text?: string;
   marks?: Array<{ type: string }>;
+}
+
+export function prosemirrorToPt(doc: { content?: PmNode[] }): PtTopLevel[] {
+  return (doc.content ?? []).map(pmNodeToTopLevel).filter(Boolean) as PtTopLevel[];
+}
+
+function pmNodeToTopLevel(node: PmNode): PtTopLevel | null {
+  if (node.type === "section") {
+    return {
+      _type: "section",
+      _key: (node.attrs?.key as string) ?? newKey(),
+      conditionIntent: (node.attrs?.conditionIntent as string) ?? undefined,
+      repeatIntent: (node.attrs?.repeatIntent as string) ?? undefined,
+      content: (node.content ?? []).map(pmNodeToPtBlock).filter(Boolean) as PtBlock[],
+    } satisfies PtSection;
+  }
+  return pmNodeToPtBlock(node);
 }
 
 function pmNodeToPtBlock(node: PmNode): PtBlock | null {

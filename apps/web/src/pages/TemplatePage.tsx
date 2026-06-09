@@ -1,37 +1,42 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTemplate, updateTemplate } from "../lib/api";
-import type { Block } from "../lib/api";
+import { getTemplate, updateTemplate, createVersion } from "../lib/api";
+import type { PtTopLevel, TemplateDetail } from "../lib/api";
 import BlockCanvas from "../components/BlockCanvas";
+import RightPanel from "../components/RightPanel";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useEditor } from "@tiptap/react";
 
 export default function TemplatePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const { data: template, isLoading } = useQuery({
+  const { data: templateData, isLoading } = useQuery({
     queryKey: ["template", id],
     queryFn: () => getTemplate(id!),
     enabled: !!id,
   });
 
   const [name, setName] = useState("");
-  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [blocks, setBlocks] = useState<PtTopLevel[]>([]);
+  const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
 
   useEffect(() => {
-    if (template) {
-      setName(template.name);
-      setBlocks(template.block_model.blocks);
+    if (templateData) {
+      setTemplateDetail(templateData);
+      setName(templateData.name);
+      setBlocks(templateData.block_model.blocks);
     }
-  }, [template]);
+  }, [templateData]);
 
   const saveMut = useMutation({
-    mutationFn: (data: { name?: string; block_model?: { blocks: Block[] } }) =>
+    mutationFn: (data: { name?: string; block_model?: { blocks: PtTopLevel[] } }) =>
       updateTemplate(id!, data),
     onSuccess: () => {
       setSaveStatus("saved");
@@ -40,7 +45,7 @@ export default function TemplatePage() {
     },
   });
 
-  function scheduleAutoSave(newBlocks: Block[], newName: string) {
+  function scheduleAutoSave(newBlocks: PtTopLevel[], newName: string) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
     debounceRef.current = setTimeout(() => {
@@ -48,7 +53,7 @@ export default function TemplatePage() {
     }, 2000);
   }
 
-  function handleBlocksChange(newBlocks: Block[]) {
+  function handleBlocksChange(newBlocks: PtTopLevel[]) {
     setBlocks(newBlocks);
     scheduleAutoSave(newBlocks, name);
   }
@@ -58,13 +63,19 @@ export default function TemplatePage() {
     scheduleAutoSave(blocks, newName);
   }
 
+  function handleRestore(restoredTemplate: TemplateDetail) {
+    setTemplateDetail(restoredTemplate);
+    setBlocks(restoredTemplate.block_model.blocks);
+    qc.invalidateQueries({ queryKey: ["template", id] });
+  }
+
   if (isLoading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
 
-  if (!template) return (
+  if (!templateDetail) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <p className="text-sm text-muted-foreground">Template not found.</p>
     </div>
@@ -104,10 +115,22 @@ export default function TemplatePage() {
         </button>
       </div>
 
-      {/* Canvas */}
-      <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full">
-        <BlockCanvas blocks={blocks} onChange={handleBlocksChange} />
-      </main>
+      {/* Build layout: canvas + right panel */}
+      <div className="flex flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="max-w-2xl mx-auto">
+            <BlockCanvas blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} />
+          </div>
+        </main>
+
+        <RightPanel
+          templateId={id!}
+          stylesheet={templateDetail.stylesheet}
+          editorRef={editorRef}
+          onCreateCheckpoint={(label) => createVersion(id!, label)}
+          onRestore={handleRestore}
+        />
+      </div>
     </div>
   );
 }

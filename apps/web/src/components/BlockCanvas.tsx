@@ -1,139 +1,27 @@
-import { useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Heading from "@tiptap/extension-heading";
 import Underline from "@tiptap/extension-underline";
 import { FieldIntentNode } from "../editor/FieldIntentNode";
+import { SectionNode } from "../editor/SectionNode";
+import { sectionNodeViewRenderer } from "../editor/SectionNodeView";
 import { ptToProsemirror, prosemirrorToPt } from "../lib/pt-bridge";
-import type { Block, PtBlock } from "../lib/api";
+import type { PtTopLevel } from "../lib/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 interface Props {
-  blocks: Block[];
-  onChange: (blocks: Block[]) => void;
+  blocks: PtTopLevel[];
+  onChange: (blocks: PtTopLevel[]) => void;
+  editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
 }
 
-export default function BlockCanvas({ blocks, onChange }: Props) {
-  const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
-
-  const updateBlock = useCallback((idx: number, updated: Block) => {
-    const next = [...blocks]; next[idx] = updated; onChange(next);
-  }, [blocks, onChange]);
-
-  const moveBlock = useCallback((idx: number, dir: -1 | 1) => {
-    const next = [...blocks];
-    const target = idx + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[idx], next[target]] = [next[target], next[idx]];
-    onChange(next);
-  }, [blocks, onChange]);
-
-  const removeIntent = useCallback((idx: number, intent: "conditionIntent" | "repeatIntent") => {
-    const next = [...blocks];
-    const b = { ...next[idx] };
-    delete b[intent];
-    next[idx] = b;
-    onChange(next);
-  }, [blocks, onChange]);
-
-  const addBlock = useCallback((type: "text" | "divider") => {
-    const newBlock: Block = type === "text"
-      ? { type: "text", style_class: "body", content: [{ _type: "block", _key: `k${Date.now()}`, style: "normal", children: [] }] }
-      : { type: "divider" };
-    onChange([...blocks, newBlock]);
-  }, [blocks, onChange]);
-
-  return (
-    <div>
-      <div className="space-y-1">
-        {blocks.map((block, idx) => (
-          <BlockRow
-            key={idx}
-            block={block}
-            idx={idx}
-            focused={focusedIdx === idx}
-            onFocus={() => setFocusedIdx(idx)}
-            onBlur={() => setFocusedIdx(prev => prev === idx ? null : prev)}
-            onChange={b => updateBlock(idx, b)}
-            onMoveUp={() => moveBlock(idx, -1)}
-            onMoveDown={() => moveBlock(idx, 1)}
-            onRemoveIntent={removeIntent}
-            isFirst={idx === 0}
-            isLast={idx === blocks.length - 1}
-          />
-        ))}
-      </div>
-
-      <div className="flex gap-2 mt-4 pt-4 border-t border-dashed border-border">
-        <Button variant="ghost" size="sm" className="text-muted-foreground text-xs" onClick={() => addBlock("text")}>
-          + Text block
-        </Button>
-        <Button variant="ghost" size="sm" className="text-muted-foreground text-xs" onClick={() => addBlock("divider")}>
-          + Divider
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ── BlockRow ──────────────────────────────────────────────────────────────────
-
-interface BlockRowProps {
-  block: Block; idx: number; focused: boolean;
-  onFocus: () => void; onBlur: () => void;
-  onChange: (b: Block) => void;
-  onMoveUp: () => void; onMoveDown: () => void;
-  onRemoveIntent: (idx: number, intent: "conditionIntent" | "repeatIntent") => void;
-  isFirst: boolean; isLast: boolean;
-}
-
-function BlockRow({ block, idx, focused, onFocus, onBlur, onChange, onMoveUp, onMoveDown, onRemoveIntent, isFirst, isLast }: BlockRowProps) {
-  return (
-    <div
-      className={`group rounded-md px-3 py-2 transition-colors ${focused ? "bg-white ring-1 ring-border shadow-sm" : "hover:bg-white/60"}`}
-      onFocus={onFocus}
-    >
-      {/* Intent badges */}
-      <div className="flex flex-wrap gap-1.5 mb-1.5">
-        {block.conditionIntent && (
-          <Badge variant="outline" className="text-xs gap-1.5 border-blue-200 text-blue-700 bg-blue-50">
-            Condition: {block.conditionIntent}
-            <button onClick={() => onRemoveIntent(idx, "conditionIntent")} className="hover:opacity-70 font-bold">×</button>
-          </Badge>
-        )}
-        {block.repeatIntent && (
-          <Badge variant="outline" className="text-xs gap-1.5 border-green-200 text-green-700 bg-green-50">
-            Repeats: {block.repeatIntent}
-            <button onClick={() => onRemoveIntent(idx, "repeatIntent")} className="hover:opacity-70 font-bold">×</button>
-          </Badge>
-        )}
-      </div>
-
-      {/* Content */}
-      {block.type === "divider"
-        ? <hr className="border-border my-1" />
-        : <TextBlockEditor block={block} onChange={onChange} onBlur={onBlur} />
-      }
-
-      {/* Toolbar — visible on focus */}
-      {focused && (
-        <BlockToolbar
-          block={block} onChange={onChange}
-          onMoveUp={onMoveUp} onMoveDown={onMoveDown}
-          isFirst={isFirst} isLast={isLast}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── TextBlockEditor ───────────────────────────────────────────────────────────
-
-function TextBlockEditor({ block, onChange, onBlur }: { block: Block; onChange: (b: Block) => void; onBlur: () => void }) {
-  const ptBlocks = block.content ?? [];
-  const pmDoc = ptToProsemirror(ptBlocks as PtBlock[]);
+export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
+  const [intentPopover, setIntentPopover] = useState<IntentPopoverState | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const editor = useEditor({
     extensions: [
@@ -141,75 +29,304 @@ function TextBlockEditor({ block, onChange, onBlur }: { block: Block; onChange: 
       Heading.configure({ levels: [1, 2, 3] }),
       Underline,
       FieldIntentNode,
+      SectionNode.configure({ nodeViewRenderer: sectionNodeViewRenderer }),
     ],
-    content: pmDoc,
+    content: ptToProsemirror(blocks),
     onUpdate: ({ editor }) => {
-      const pmJson = editor.getJSON();
-      const newPt = prosemirrorToPt(pmJson as { content?: Parameters<typeof prosemirrorToPt>[0]["content"] });
-      onChange({ ...block, content: newPt as PtBlock[] });
+      const pmJson = editor.getJSON() as { content?: Parameters<typeof prosemirrorToPt>[0]["content"] };
+      const newBlocks = prosemirrorToPt(pmJson);
+      onChangeRef.current(newBlocks);
     },
-    onBlur,
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[1.5rem] prose prose-sm max-w-none prose-zinc",
+        class: "outline-none min-h-[60vh] prose prose-sm max-w-none prose-zinc focus:outline-none",
+      },
+      handleContextMenu: (view, event) => {
+        // Suppress browser context menu; we handle it ourselves
+        event.preventDefault();
+        showContextMenu(event.clientX, event.clientY);
+        return true;
       },
     },
   });
 
-  return <EditorContent editor={editor} />;
-}
+  // Keep editorRef in sync for Document Map
+  useEffect(() => {
+    if (editorRef) editorRef.current = editor;
+  }, [editor, editorRef]);
 
-// ── BlockToolbar ──────────────────────────────────────────────────────────────
+  const showContextMenu = useCallback((x: number, y: number) => {
+    setIntentPopover({ x, y, mode: "contextmenu" });
+  }, []);
 
-function BlockToolbar({ block, onChange, onMoveUp, onMoveDown, isFirst, isLast }: {
-  block: Block; onChange: (b: Block) => void;
-  onMoveUp: () => void; onMoveDown: () => void;
-  isFirst: boolean; isLast: boolean;
-}) {
-  const [fieldPrompt, setFieldPrompt] = useState<string | null>(null);
-
-  function promptConditionIntent() {
-    const desc = prompt("When should this block appear?\ne.g. 'show only when invoice is paid'");
-    if (desc) onChange({ ...block, conditionIntent: desc, repeatIntent: undefined });
+  function applyIntent(type: "field" | "condition" | "repeat", label: string) {
+    if (!editor) return;
+    if (type === "field") {
+      editor.chain().focus().setFieldIntent(label).run();
+    } else if (type === "condition") {
+      editor.chain().focus().wrapInSection({ conditionIntent: label }).run();
+    } else {
+      editor.chain().focus().wrapInSection({ repeatIntent: label }).run();
+    }
+    setIntentPopover(null);
   }
 
-  function promptRepeatIntent() {
-    const desc = prompt("What does this block repeat over?\ne.g. 'one row per line item'");
-    if (desc) onChange({ ...block, repeatIntent: desc, conditionIntent: undefined });
+  function openIntentPopover() {
+    if (!editor) return;
+    const { view } = editor;
+    const { from } = editor.state.selection;
+    const coords = view.coordsAtPos(from);
+    setIntentPopover({ x: coords.left, y: coords.bottom + 8, mode: "toolbar" });
+  }
+
+  const { isInline, isMultiParagraph } = getSelectionKind(editor);
+
+  return (
+    <div className="relative">
+      {/* Formatting toolbar */}
+      <FormattingToolbar editor={editor} onIntentClick={openIntentPopover} />
+
+      {/* Editor surface */}
+      <div
+        className="mt-3 rounded-lg border border-border bg-white px-8 py-6"
+        onContextMenu={(e) => { e.preventDefault(); showContextMenu(e.clientX, e.clientY); }}
+      >
+        <EditorContent editor={editor} />
+      </div>
+
+      {/* Bubble menu for intent (selection-based) */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          tippyOptions={{ duration: 100, placement: "top-start" }}
+          shouldShow={({ editor: e }) => {
+            const { from, to } = e.state.selection;
+            return from !== to;
+          }}
+        >
+          <button
+            className="flex items-center gap-1 px-2 py-1 rounded bg-white border border-border shadow-sm text-xs hover:bg-zinc-50 font-medium"
+            onMouseDown={(e) => { e.preventDefault(); openIntentPopover(); }}
+          >
+            ◈ Intent
+          </button>
+        </BubbleMenu>
+      )}
+
+      {/* Intent popover */}
+      {intentPopover && editor && (
+        <IntentPopover
+          x={intentPopover.x}
+          y={intentPopover.y}
+          isInline={isInline}
+          isMultiParagraph={isMultiParagraph}
+          onApply={applyIntent}
+          onClose={() => setIntentPopover(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Intent popover state ──────────────────────────────────────────────────────
+
+interface IntentPopoverState {
+  x: number;
+  y: number;
+  mode: "toolbar" | "contextmenu";
+}
+
+// ── Selection kind helper ─────────────────────────────────────────────────────
+
+function getSelectionKind(editor: ReturnType<typeof useEditor> | null) {
+  if (!editor) return { isInline: true, isMultiParagraph: false };
+  const { from, to } = editor.state.selection;
+  if (from === to) return { isInline: true, isMultiParagraph: false };
+
+  let blockCount = 0;
+  editor.state.doc.nodesBetween(from, to, (node) => {
+    if (node.isBlock && !node.isLeaf) blockCount++;
+  });
+  return {
+    isInline: blockCount <= 1,
+    isMultiParagraph: blockCount > 1,
+  };
+}
+
+// ── FormattingToolbar ─────────────────────────────────────────────────────────
+
+function FormattingToolbar({
+  editor,
+  onIntentClick,
+}: {
+  editor: ReturnType<typeof useEditor> | null;
+  onIntentClick: () => void;
+}) {
+  if (!editor) return null;
+
+  const btn = (active: boolean, onClick: () => void, label: string) => (
+    <button
+      key={label}
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground"
+          : "hover:bg-zinc-100 text-zinc-600"
+      }`}
+      title={label}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex items-center gap-0.5 px-1 py-1 rounded-md border border-border bg-white shadow-sm flex-wrap">
+      {btn(editor.isActive("bold"), () => editor.chain().focus().toggleBold().run(), "B")}
+      {btn(editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run(), "I")}
+      {btn(editor.isActive("underline"), () => editor.chain().focus().toggleUnderline().run(), "U")}
+      <div className="w-px h-4 bg-border mx-0.5" />
+      {btn(editor.isActive("heading", { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), "H1")}
+      {btn(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2")}
+      {btn(editor.isActive("heading", { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3")}
+      <div className="w-px h-4 bg-border mx-0.5" />
+      <button
+        onMouseDown={(e) => { e.preventDefault(); onIntentClick(); }}
+        className="px-2 py-1 rounded text-xs font-medium hover:bg-zinc-100 text-primary transition-colors"
+        title="Add intent annotation"
+      >
+        ◈ Intent
+      </button>
+    </div>
+  );
+}
+
+// ── IntentPopover ─────────────────────────────────────────────────────────────
+
+function IntentPopover({
+  x,
+  y,
+  isInline,
+  isMultiParagraph,
+  onApply,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  isInline: boolean;
+  isMultiParagraph: boolean;
+  onApply: (type: "field" | "condition" | "repeat", label: string) => void;
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<"field" | "condition" | "repeat" | null>(null);
+  const [label, setLabel] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Field disabled for multi-paragraph; condition/repeat disabled for inline-only
+  const fieldDisabled = isMultiParagraph;
+  const blockDisabled = isInline;
+
+  useEffect(() => {
+    if (selected) inputRef.current?.focus();
+  }, [selected]);
+
+  function handleApply(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || !label.trim()) return;
+    onApply(selected, label.trim());
   }
 
   return (
-    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/60">
-      {fieldPrompt !== null ? (
-        <form
-          className="flex items-center gap-1.5 flex-1"
-          onSubmit={e => {
-            e.preventDefault();
-            const label = fieldPrompt.trim();
-            if (label) alert(`Select text in the block first — the label "${label}" will be applied to your selection.`);
-            setFieldPrompt(null);
-          }}
-        >
-          <Input
-            autoFocus
-            value={fieldPrompt}
-            onChange={e => setFieldPrompt(e.target.value)}
-            placeholder="Field label, e.g. customer's full name"
-            className="h-6 text-xs"
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="fixed z-50 w-72 rounded-lg border border-border bg-white shadow-lg p-3"
+        style={{ left: x, top: y }}
+      >
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Add intent</p>
+
+        <div className="flex gap-1.5 mb-3">
+          <IntentOption
+            label="Field"
+            description="Inline placeholder"
+            active={selected === "field"}
+            disabled={fieldDisabled}
+            onClick={() => { setSelected("field"); setLabel(""); }}
           />
-          <Button type="submit" size="sm" variant="secondary" className="h-6 text-xs px-2">Apply</Button>
-          <Button type="button" size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setFieldPrompt(null)}>Cancel</Button>
-        </form>
-      ) : (
-        <>
-          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setFieldPrompt("")}>Mark as field</Button>
-          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={promptConditionIntent}>Conditional</Button>
-          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={promptRepeatIntent}>Repeating</Button>
-          <span className="flex-1" />
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onMoveUp} disabled={isFirst}>↑</Button>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onMoveDown} disabled={isLast}>↓</Button>
-        </>
-      )}
-    </div>
+          <IntentOption
+            label="Condition"
+            description="Show/hide section"
+            active={selected === "condition"}
+            disabled={blockDisabled}
+            onClick={() => { setSelected("condition"); setLabel(""); }}
+          />
+          <IntentOption
+            label="Repeat"
+            description="Loop section"
+            active={selected === "repeat"}
+            disabled={blockDisabled}
+            onClick={() => { setSelected("repeat"); setLabel(""); }}
+          />
+        </div>
+
+        {selected && (
+          <form onSubmit={handleApply} className="flex flex-col gap-2">
+            <Input
+              ref={inputRef}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={
+                selected === "field"
+                  ? "e.g. customer's full name"
+                  : selected === "condition"
+                  ? "e.g. show only when invoice is paid"
+                  : "e.g. one row per line item"
+              }
+              className="h-7 text-xs"
+            />
+            <div className="flex gap-1.5">
+              <Button type="submit" size="sm" className="h-7 text-xs flex-1" disabled={!label.trim()}>
+                Apply
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={onClose}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </>
+  );
+}
+
+function IntentOption({
+  label,
+  description,
+  active,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex-1 rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
+        disabled
+          ? "opacity-40 cursor-not-allowed border-border"
+          : active
+          ? "border-primary bg-primary/5 text-primary"
+          : "border-border hover:border-primary/40 hover:bg-zinc-50"
+      }`}
+    >
+      <div className="font-medium">{label}</div>
+      <div className="text-zinc-400 leading-tight">{description}</div>
+    </button>
   );
 }

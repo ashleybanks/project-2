@@ -1,8 +1,4 @@
-## Purpose
-
-Manages persistence, retrieval, and lifecycle of templates including their block models and stylesheet references.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Template creation
 The system SHALL allow an authenticated user to create a template, either blank or from an imported block model. A template SHALL have a name, a block model stored as JSONB, and a stylesheet reference. The creating user SHALL be the owner.

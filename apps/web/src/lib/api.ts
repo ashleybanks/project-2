@@ -22,27 +22,50 @@ export interface TemplateSummary {
   updated_at: string;
 }
 
+export interface BrandRules {
+  fontFamily?: string;
+  fontSize?: number;
+  headingFont?: string;
+  accentColour?: string;
+  paragraphSpacing?: number;
+}
+
+export interface Stylesheet {
+  brand_snapshot?: BrandRules;
+  overrides?: Partial<BrandRules>;
+}
+
+export interface VersionSummary {
+  id: string;
+  label: string | null;
+  created_at: string;
+}
+
 export interface TemplateDetail extends TemplateSummary {
   block_model: BlockModel;
+  stylesheet: Stylesheet;
 }
 
 export interface BlockModel {
-  blocks: Block[];
+  blocks: PtTopLevel[];
 }
 
-export interface Block {
-  type: "text" | "divider";
-  style_class?: string;
-  conditionIntent?: string;
-  repeatIntent?: string;
-  content?: PtBlock[];
-}
+// Top-level block model entries — either a plain PT block or a PT section type
+export type PtTopLevel = PtBlock | PtSection;
 
 export interface PtBlock {
   _type: "block";
   _key: string;
   style: string;
   children: PtChild[];
+}
+
+export interface PtSection {
+  _type: "section";
+  _key: string;
+  conditionIntent?: string;
+  repeatIntent?: string;
+  content: PtBlock[];
 }
 
 export type PtChild = PtSpan | PtFieldIntent;
@@ -74,7 +97,7 @@ export const createTemplate = (name: string, block_model?: BlockModel) =>
 export const getTemplate = (id: string) =>
   apiFetch<TemplateDetail>(`/templates/${id}`);
 
-export const updateTemplate = (id: string, data: { name?: string; block_model?: BlockModel }) =>
+export const updateTemplate = (id: string, data: { name?: string; block_model?: BlockModel; stylesheet?: Partial<BrandRules> }) =>
   apiFetch<TemplateDetail>(`/templates/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -82,6 +105,29 @@ export const updateTemplate = (id: string, data: { name?: string; block_model?: 
 
 export const deleteTemplate = (id: string) =>
   apiFetch<void>(`/templates/${id}`, { method: "DELETE" });
+
+export const getBrandRules = () =>
+  apiFetch<BrandRules>("/stylesheets/brand-rules");
+
+export const updateBrandRules = (rules: BrandRules) =>
+  apiFetch<BrandRules>("/stylesheets/brand-rules", {
+    method: "PUT",
+    body: JSON.stringify(rules),
+  });
+
+export const listVersions = (id: string) =>
+  apiFetch<VersionSummary[]>(`/templates/${id}/versions`);
+
+export const createVersion = (id: string, label: string) =>
+  apiFetch<VersionSummary>(`/templates/${id}/versions`, {
+    method: "POST",
+    body: JSON.stringify({ label }),
+  });
+
+export const restoreVersion = (id: string, versionId: string) =>
+  apiFetch<TemplateDetail>(`/templates/${id}/versions/${versionId}/restore`, {
+    method: "POST",
+  });
 
 export const importDocx = async (file: File): Promise<BlockModel> => {
   const form = new FormData();

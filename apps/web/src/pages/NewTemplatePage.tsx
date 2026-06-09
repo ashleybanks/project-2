@@ -29,8 +29,10 @@ export default function NewTemplatePage() {
     setStatus("Parsing document…");
     try {
       const blockModel = await importDocx(file);
-      const count = blockModel.blocks.length;
-      setStatus(`Parsed ${count} blocks — creating template…`);
+      // The block model has a single section entry whose content array holds the PT blocks
+      const section = blockModel.blocks[0];
+      const paragraphCount = section._type === "section" ? section.content.length : 0;
+      setStatus(`Imported ${paragraphCount} paragraph${paragraphCount !== 1 ? "s" : ""} — creating template…`);
       const t = await createTemplate(name || file.name.replace(/\.docx$/i, ""), blockModel);
       navigate(`/app/templates/${t.id}`);
     } catch (e: unknown) {

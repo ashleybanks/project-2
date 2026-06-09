@@ -1,8 +1,4 @@
-## Purpose
-
-Handles importing DOCX documents into the block model format, and rendering the imported content as a continuous editable canvas.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: DOCX upload and parsing
 The system SHALL accept a DOCX file upload and parse it into a block model containing Portable Text blocks with static content. The import endpoint SHALL be stateless — it returns the block model without persisting it. The parsed output SHALL be a single project block containing an array of all PT elements from the document, rather than one project block per paragraph.
@@ -31,7 +27,7 @@ The system SHALL accept a DOCX file upload and parse it into a block model conta
 - **WHEN** a file that is not a valid DOCX (e.g. a PDF or plain text file renamed to .docx) is uploaded
 - **THEN** the system SHALL return HTTP 422 with an error indicating the file could not be parsed
 
----
+## MODIFIED Requirements
 
 ### Requirement: Canvas rendering of imported document
 The frontend SHALL render a parsed block model as a single continuous editing surface. The entire document SHALL be editable within one Tiptap editor instance.

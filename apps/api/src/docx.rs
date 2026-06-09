@@ -24,8 +24,14 @@ pub fn parse_docx(data: &[u8]) -> Result<Value, String> {
         buf
     };
 
-    let blocks = parse_document_xml(&xml)?;
-    Ok(json!({ "blocks": blocks }))
+    let pt_blocks = parse_document_xml(&xml)?;
+    // Wrap all PT blocks in a single _type: "section" entry (no intent).
+    let section = json!({
+        "_type": "section",
+        "_key": new_key(),
+        "content": pt_blocks
+    });
+    Ok(json!({ "blocks": [section] }))
 }
 
 fn parse_document_xml(xml: &[u8]) -> Result<Vec<Value>, String> {
@@ -129,14 +135,10 @@ fn parse_document_xml(xml: &[u8]) -> Result<Vec<Value>, String> {
                         if !current_spans.is_empty() || para_style.is_some() {
                             let style = map_para_style(para_style.as_deref());
                             blocks.push(json!({
-                                "type": "text",
-                                "style_class": "body",
-                                "content": [{
-                                    "_type": "block",
-                                    "_key": new_key(),
-                                    "style": style,
-                                    "children": current_spans
-                                }]
+                                "_type": "block",
+                                "_key": new_key(),
+                                "style": style,
+                                "children": current_spans
                             }));
                         }
                     }
@@ -222,8 +224,9 @@ mod tests {
         let result = parse_docx(&docx).unwrap();
         let blocks = result["blocks"].as_array().unwrap();
         assert_eq!(blocks.len(), 1);
-        let children = &blocks[0]["content"][0]["children"];
-        assert_eq!(children[0]["text"], "Hello world");
+        assert_eq!(blocks[0]["_type"], "section");
+        let content = blocks[0]["content"].as_array().unwrap();
+        assert_eq!(content[0]["children"][0]["text"], "Hello world");
     }
 
     #[test]
@@ -238,7 +241,8 @@ mod tests {
 </w:document>"#;
         let docx = make_docx(xml);
         let result = parse_docx(&docx).unwrap();
-        let children = &result["blocks"][0]["content"][0]["children"];
+        let content = result["blocks"][0]["content"].as_array().unwrap();
+        let children = &content[0]["children"];
         let marks = children[0]["marks"].as_array().unwrap();
         assert!(marks.iter().any(|m| m == "strong"), "missing strong");
         assert!(marks.iter().any(|m| m == "em"), "missing em");
@@ -257,7 +261,8 @@ mod tests {
 </w:document>"#;
         let docx = make_docx(xml);
         let result = parse_docx(&docx).unwrap();
-        let style = &result["blocks"][0]["content"][0]["style"];
+        let content = result["blocks"][0]["content"].as_array().unwrap();
+        let style = &content[0]["style"];
         assert_eq!(style, "h1");
     }
 

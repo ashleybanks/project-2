@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import TemplateListPage from "./pages/TemplateListPage";
 import NewTemplatePage from "./pages/NewTemplatePage";
 import TemplatePage from "./pages/TemplatePage";
+import StylesheetsPage from "./pages/StylesheetsPage";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ export default function App() {
                   <Route path="templates" element={<TemplateListPage />} />
                   <Route path="templates/new" element={<NewTemplatePage />} />
                   <Route path="templates/:id" element={<TemplatePage />} />
+                  <Route path="stylesheets" element={<StylesheetsPage />} />
                 </Routes>
               </ProtectedRoute>
             }

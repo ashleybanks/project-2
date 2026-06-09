@@ -1,8 +1,4 @@
-## Purpose
-
-Allows users to annotate template content with field, condition, and repeat intents via a unified selection-based gesture, and renders those annotations visually in the canvas.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Field intent annotation
 The system SHALL allow a user to select text within the editor and annotate it as a field intent via a unified selection-based gesture. The selected text SHALL be replaced by a `fieldIntent` inline node storing the label. The annotation SHALL be visually distinct from plain text.

@@ -1,0 +1,308 @@
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { listVersions, createVersion, restoreVersion } from "../lib/api";
+import type { Stylesheet, TemplateDetail, VersionSummary } from "../lib/api";
+import { useEditor } from "@tiptap/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type Tab = "map" | "stylesheet" | "history";
+
+interface Props {
+  templateId: string;
+  stylesheet: Stylesheet;
+  editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+  onCreateCheckpoint: (label: string) => Promise<VersionSummary>;
+  onRestore: (template: TemplateDetail) => void;
+}
+
+export default function RightPanel({ templateId, stylesheet, editorRef, onCreateCheckpoint, onRestore }: Props) {
+  const storageKey = `rp-tab-${templateId}`;
+  const [tab, setTab] = useState<Tab>(() => {
+    return (localStorage.getItem(storageKey) as Tab) ?? "map";
+  });
+
+  function switchTab(t: Tab) {
+    setTab(t);
+    localStorage.setItem(storageKey, t);
+  }
+
+  return (
+    <aside className="w-72 border-l border-border bg-white flex flex-col overflow-hidden shrink-0">
+      {/* Tab bar */}
+      <div className="flex border-b border-border">
+        {(["map", "stylesheet", "history"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => switchTab(t)}
+            className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors ${
+              tab === t
+                ? "text-primary border-b-2 border-primary -mb-px bg-white"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t === "map" ? "Doc Map" : t === "stylesheet" ? "Styles" : "History"}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto">
+        {tab === "map"        && <DocumentMapTab editorRef={editorRef} />}
+        {tab === "stylesheet" && <StylesheetTab stylesheet={stylesheet} />}
+        {tab === "history"    && (
+          <HistoryTab
+            templateId={templateId}
+            onCreateCheckpoint={onCreateCheckpoint}
+            onRestore={onRestore}
+          />
+        )}
+      </div>
+    </aside>
+  );
+}
+
+// ── Document Map ──────────────────────────────────────────────────────────────
+
+interface MapEntry {
+  label: string;
+  indent: number;
+  pos: number;
+  isIntent: boolean;
+}
+
+function DocumentMapTab({ editorRef }: { editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null> }) {
+  const [entries, setEntries] = useState<MapEntry[]>([]);
+  const [highlighted, setHighlighted] = useState<number | null>(null);
+
+  useEffect(() => {
+    function rebuild() {
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      const newEntries: MapEntry[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "heading") {
+          const level = node.attrs.level as number;
+          newEntries.push({
+            label: node.textContent || `Heading ${level}`,
+            indent: level - 1,
+            pos,
+            isIntent: false,
+          });
+        } else if (node.type.name === "section") {
+          const intent = (node.attrs.conditionIntent ?? node.attrs.repeatIntent) as string | null;
+          if (intent) {
+            newEntries.push({
+              label: `◈ ${intent.length > 30 ? intent.slice(0, 30) + "…" : intent}`,
+              indent: 0,
+              pos,
+              isIntent: true,
+            });
+          }
+        }
+      });
+      setEntries(newEntries);
+    }
+
+    // Poll until editor is ready, then subscribe to updates
+    const poll = setInterval(() => {
+      const editor = editorRef.current;
+      if (editor) {
+        clearInterval(poll);
+        rebuild();
+        editor.on("update", rebuild);
+      }
+    }, 200);
+
+    return () => {
+      clearInterval(poll);
+      const editor = editorRef.current;
+      if (editor) editor.off("update", rebuild);
+    };
+  }, [editorRef]);
+
+  function navigateTo(pos: number) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.commands.setTextSelection(pos + 1);
+    editor.commands.scrollIntoView();
+    setHighlighted(pos);
+    setTimeout(() => setHighlighted(null), 1200);
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="p-4 text-xs text-muted-foreground">
+        Document structure will appear here as you add headings and intents.
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-2">
+      {entries.map((entry, i) => (
+        <button
+          key={i}
+          onClick={() => navigateTo(entry.pos)}
+          className={`w-full text-left px-4 py-1.5 text-xs transition-colors rounded-none hover:bg-zinc-50 ${
+            highlighted === entry.pos ? "bg-primary/10 text-primary" : ""
+          } ${entry.isIntent ? "text-primary/80 font-medium" : "text-foreground"}`}
+          style={{ paddingLeft: `${(entry.indent + 1) * 12}px` }}
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Stylesheet ─────────────────────────────────────────────────────────────────
+
+function StylesheetTab({ stylesheet }: { stylesheet: Stylesheet }) {
+  const effective = { ...stylesheet.brand_snapshot, ...stylesheet.overrides };
+
+  return (
+    <div className="p-4 space-y-3">
+      <div>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Active stylesheet</p>
+        <div className="rounded-md border border-border p-3 space-y-1.5 text-xs">
+          <Row label="Font" value={effective.fontFamily ?? "—"} />
+          <Row label="Size" value={effective.fontSize ? `${effective.fontSize}px` : "—"} />
+          <Row label="Heading font" value={effective.headingFont ?? "—"} />
+          <Row label="Accent colour" value={effective.accentColour ?? "—"} />
+          <Row label="Para spacing" value={effective.paragraphSpacing ? `${effective.paragraphSpacing}px` : "—"} />
+        </div>
+      </div>
+      <a
+        href="/app/stylesheets"
+        className="block text-xs text-primary hover:underline"
+      >
+        Edit brand rules →
+      </a>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium truncate">{value}</span>
+    </div>
+  );
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+
+function HistoryTab({
+  templateId,
+  onCreateCheckpoint,
+  onRestore,
+}: {
+  templateId: string;
+  onCreateCheckpoint: (label: string) => Promise<VersionSummary>;
+  onRestore: (template: TemplateDetail) => void;
+}) {
+  const qc = useQueryClient();
+  const [checkpointLabel, setCheckpointLabel] = useState("");
+  const [creatingCheckpoint, setCreatingCheckpoint] = useState(false);
+  const [savingCheckpoint, setSavingCheckpoint] = useState(false);
+
+  const { data: versions, isLoading } = useQuery({
+    queryKey: ["versions", templateId],
+    queryFn: () => listVersions(templateId),
+    refetchInterval: 30_000,
+  });
+
+  const restoreMut = useMutation({
+    mutationFn: (versionId: string) => restoreVersion(templateId, versionId),
+    onSuccess: (result) => {
+      onRestore(result);
+      qc.invalidateQueries({ queryKey: ["versions", templateId] });
+    },
+  });
+
+  async function handleCreateCheckpoint(e: React.FormEvent) {
+    e.preventDefault();
+    const label = checkpointLabel.trim();
+    if (!label) return;
+    setSavingCheckpoint(true);
+    await onCreateCheckpoint(label);
+    setSavingCheckpoint(false);
+    setCheckpointLabel("");
+    setCreatingCheckpoint(false);
+    qc.invalidateQueries({ queryKey: ["versions", templateId] });
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Create checkpoint */}
+      <div className="p-3 border-b border-border">
+        {creatingCheckpoint ? (
+          <form onSubmit={handleCreateCheckpoint} className="flex flex-col gap-1.5">
+            <Input
+              autoFocus
+              value={checkpointLabel}
+              onChange={(e) => setCheckpointLabel(e.target.value)}
+              placeholder="Checkpoint name…"
+              className="h-7 text-xs"
+            />
+            <div className="flex gap-1">
+              <Button type="submit" size="sm" className="h-7 text-xs flex-1" disabled={savingCheckpoint || !checkpointLabel.trim()}>
+                {savingCheckpoint ? "Saving…" : "Save checkpoint"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCreatingCheckpoint(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => setCreatingCheckpoint(true)}>
+            + Create checkpoint
+          </Button>
+        )}
+      </div>
+
+      {/* Version list */}
+      <div className="flex-1 overflow-y-auto">
+        {isLoading && (
+          <p className="p-4 text-xs text-muted-foreground">Loading history…</p>
+        )}
+        {!isLoading && (!versions || versions.length === 0) && (
+          <p className="p-4 text-xs text-muted-foreground">No history yet. Auto-saves appear here.</p>
+        )}
+        {versions?.map((v) => (
+          <VersionRow
+            key={v.id}
+            version={v}
+            onRestore={() => restoreMut.mutate(v.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VersionRow({ version, onRestore }: { version: VersionSummary; onRestore: () => void }) {
+  const isCheckpoint = !!version.label;
+  const date = new Date(version.created_at);
+  const dateStr = date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className={`flex items-center justify-between px-3 py-2 border-b border-border/50 hover:bg-zinc-50 group ${isCheckpoint ? "bg-amber-50/40" : ""}`}>
+      <div className="min-w-0">
+        <p className={`text-xs truncate ${isCheckpoint ? "font-semibold text-amber-800" : "text-muted-foreground"}`}>
+          {isCheckpoint ? version.label : "Auto-save"}
+        </p>
+        <p className="text-xs text-muted-foreground/60">{dateStr}</p>
+      </div>
+      <button
+        onClick={onRestore}
+        className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:underline shrink-0 ml-2"
+      >
+        Restore
+      </button>
+    </div>
+  );
+}

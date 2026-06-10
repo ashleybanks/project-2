@@ -3,7 +3,11 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Heading from "@tiptap/extension-heading";
-import Underline from "@tiptap/extension-underline";
+import UnderlineExt from "@tiptap/extension-underline";
+import SubscriptExt from "@tiptap/extension-subscript";
+import SuperscriptExt from "@tiptap/extension-superscript";
+import TextAlign from "@tiptap/extension-text-align";
+import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import { FieldIntentNode } from "../editor/FieldIntentNode";
 import { SectionNode } from "../editor/SectionNode";
 import { sectionNodeViewRenderer } from "../editor/SectionNodeView";
@@ -11,6 +15,12 @@ import { ptToProsemirror, prosemirrorToPt } from "../lib/pt-bridge";
 import type { PtTopLevel } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Bold, Italic, Underline, Strikethrough, Subscript, Superscript,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  List, ListOrdered,
+  Heading1, Heading2, Heading3, Heading4, Heading5, Heading6,
+} from "lucide-react";
 
 interface Props {
   blocks: PtTopLevel[];
@@ -25,9 +35,16 @@ export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: false, underline: false }),
-      Heading.configure({ levels: [1, 2, 3] }),
-      Underline,
+      StarterKit.configure({ heading: false }),
+      Heading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
+      UnderlineExt,
+      SubscriptExt,
+      SuperscriptExt,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       FieldIntentNode,
       SectionNode.configure({ nodeViewRenderer: sectionNodeViewRenderer }),
     ],
@@ -172,6 +189,8 @@ function getSelectionKind(editor: ReturnType<typeof useEditor> | null) {
 
 // ── FormattingToolbar ─────────────────────────────────────────────────────────
 
+const SEP = <div className="w-px h-4 bg-border mx-0.5 shrink-0" />;
+
 function FormattingToolbar({
   editor,
   onIntentClick,
@@ -181,31 +200,65 @@ function FormattingToolbar({
 }) {
   if (!editor) return null;
 
-  const btn = (active: boolean, onClick: () => void, label: string) => (
+  const btn = (
+    active: boolean,
+    onClick: () => void,
+    title: string,
+    Icon: React.ComponentType<{ size?: number }>,
+  ) => (
     <button
-      key={label}
+      key={title}
       onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+      className={`p-1.5 rounded transition-colors ${
         active
           ? "bg-primary text-primary-foreground"
           : "hover:bg-zinc-100 text-zinc-600"
       }`}
-      title={label}
+      title={title}
     >
-      {label}
+      <Icon size={14} />
     </button>
   );
 
   return (
     <div className="flex items-center gap-0.5 px-1 py-1 rounded-md border border-border bg-white shadow-sm flex-wrap">
-      {btn(editor.isActive("bold"), () => editor.chain().focus().toggleBold().run(), "B")}
-      {btn(editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run(), "I")}
-      {btn(editor.isActive("underline"), () => editor.chain().focus().toggleUnderline().run(), "U")}
-      <div className="w-px h-4 bg-border mx-0.5" />
-      {btn(editor.isActive("heading", { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), "H1")}
-      {btn(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2")}
-      {btn(editor.isActive("heading", { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3")}
-      <div className="w-px h-4 bg-border mx-0.5" />
+      {/* Headings */}
+      {([1, 2, 3, 4, 5, 6] as const).map((level) => {
+        const Icon = [Heading1, Heading2, Heading3, Heading4, Heading5, Heading6][level - 1];
+        return btn(
+          editor.isActive("heading", { level }),
+          () => editor.chain().focus().toggleHeading({ level }).run(),
+          `Heading ${level}`,
+          Icon,
+        );
+      })}
+
+      {SEP}
+
+      {/* Alignment */}
+      {btn(editor.isActive({ textAlign: "left" }),    () => editor.chain().focus().setTextAlign("left").run(),    "Align left",    AlignLeft)}
+      {btn(editor.isActive({ textAlign: "center" }),  () => editor.chain().focus().setTextAlign("center").run(),  "Align center",  AlignCenter)}
+      {btn(editor.isActive({ textAlign: "right" }),   () => editor.chain().focus().setTextAlign("right").run(),   "Align right",   AlignRight)}
+      {btn(editor.isActive({ textAlign: "justify" }), () => editor.chain().focus().setTextAlign("justify").run(), "Justify",       AlignJustify)}
+
+      {SEP}
+
+      {/* Lists */}
+      {btn(editor.isActive("bulletList"),  () => editor.chain().focus().toggleBulletList().run(),  "Bullet list",   List)}
+      {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), "Ordered list",  ListOrdered)}
+
+      {SEP}
+
+      {/* Inline styles */}
+      {btn(editor.isActive("bold"),        () => editor.chain().focus().toggleBold().run(),        "Bold",          Bold)}
+      {btn(editor.isActive("italic"),      () => editor.chain().focus().toggleItalic().run(),      "Italic",        Italic)}
+      {btn(editor.isActive("underline"),   () => editor.chain().focus().toggleUnderline().run(),   "Underline",     Underline)}
+      {btn(editor.isActive("strike"),      () => editor.chain().focus().toggleStrike().run(),      "Strikethrough", Strikethrough)}
+      {btn(editor.isActive("subscript"),   () => editor.chain().focus().toggleSubscript().run(),   "Subscript",     Subscript)}
+      {btn(editor.isActive("superscript"), () => editor.chain().focus().toggleSuperscript().run(), "Superscript",   Superscript)}
+
+      {SEP}
+
       <button
         onMouseDown={(e) => { e.preventDefault(); onIntentClick(); }}
         className="px-2 py-1 rounded text-xs font-medium hover:bg-zinc-100 text-primary transition-colors"

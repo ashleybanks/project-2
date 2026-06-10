@@ -51,14 +51,17 @@ export interface BlockModel {
   blocks: PtTopLevel[];
 }
 
-// Top-level block model entries — either a plain PT block or a PT section type
-export type PtTopLevel = PtBlock | PtSection;
+// Top-level block model entries — either a plain PT block, section, or table
+export type PtTopLevel = PtBlock | PtSection | PtTable;
 
 export interface PtBlock {
   _type: "block";
   _key: string;
   style: string;
   children: PtChild[];
+  textAlign?: "left" | "right" | "center" | "justify";
+  listItem?: "bullet" | "number";
+  level?: number;
 }
 
 export interface PtSection {
@@ -66,6 +69,25 @@ export interface PtSection {
   _key: string;
   conditionIntent?: string;
   repeatIntent?: string;
+  content: Array<PtBlock | PtTable>;
+}
+
+export interface PtTable {
+  _type: "table";
+  _key: string;
+  rows: PtTableRow[];
+}
+
+export interface PtTableRow {
+  _type: "tableRow";
+  _key: string;
+  cells: PtTableCell[];
+}
+
+export interface PtTableCell {
+  _type: "tableCell";
+  _key: string;
+  isHeader: boolean;
   content: PtBlock[];
 }
 

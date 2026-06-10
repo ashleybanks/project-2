@@ -117,3 +117,53 @@
   }
   p { margin: 0; }
 }
+
+/* ── ProseMirror editor content ───────────────────────────── */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+/* Outline ordered lists: 1. / 1.1. / 1.1.1. via CSS counters */
+.ProseMirror ol {
+  counter-reset: item;
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ol > li {
+  counter-increment: item;
+  padding-left: 3.5em;
+  position: relative;
+}
+
+.ProseMirror ol > li::before {
+  content: counters(item, ".") ".";
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
+}
+
+.ProseMirror li > p {
+  margin: 0;
+}
+
+/* Tables */
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+  min-width: 2rem;
+}
+
+.ProseMirror th {
+  background: #f3f4f6;
+  font-weight: 600;
+}

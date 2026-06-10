@@ -25,7 +25,7 @@ export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: false }),
+      StarterKit.configure({ heading: false, underline: false }),
       Heading.configure({ levels: [1, 2, 3] }),
       Underline,
       FieldIntentNode,

@@ -15,6 +15,9 @@ pub enum AppError {
     #[error("Email already in use")]
     EmailInUse,
 
+    #[error("Email not verified")]
+    EmailNotVerified,
+
     #[error("Not found")]
     NotFound,
 
@@ -30,6 +33,17 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        if let AppError::EmailNotVerified = &self {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({
+                    "error": "EMAIL_NOT_VERIFIED",
+                    "message": "Please verify your email before signing in."
+                })),
+            )
+                .into_response();
+        }
+
         let (status, message) = match &self {
             AppError::Sqlx(e) => {
                 tracing::error!("Database error: {e}");
@@ -38,6 +52,7 @@ impl IntoResponse for AppError {
             AppError::Unauthorised => (StatusCode::UNAUTHORIZED, self.to_string()),
             AppError::InvalidCredentials => (StatusCode::UNAUTHORIZED, self.to_string()),
             AppError::EmailInUse => (StatusCode::CONFLICT, self.to_string()),
+            AppError::EmailNotVerified => unreachable!(),
             AppError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");

@@ -32,7 +32,7 @@ export default function TopNav() {
     <header className="h-14 border-b border-border bg-white flex items-center px-6 shrink-0 z-30">
       <Link
         to="/app/templates"
-        className="font-semibold text-lg tracking-tight text-foreground hover:opacity-70 transition-opacity"
+        className="font-semibold text-2xl tracking-tight text-foreground hover:opacity-70 transition-opacity"
       >
         Tessia
       </Link>
@@ -42,20 +42,22 @@ export default function TopNav() {
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-zinc-100 transition-colors"
         >
-          <span className="text-xs text-muted-foreground hidden sm:block max-w-[180px] truncate">
+          <span className="text-base text-muted-foreground hidden sm:block max-w-[180px] truncate">
             {user?.name || user?.email}
           </span>
-          <div className="w-6 h-6 rounded-full bg-zinc-200 text-zinc-600 flex items-center justify-center text-[10px] font-semibold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-zinc-200 text-zinc-600 flex items-center justify-center text-base font-semibold shrink-0">
             {initials}
           </div>
         </button>
 
         {open && (
           <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-border rounded-lg shadow-lg py-1 z-50">
-            <div className="px-3 py-2 border-b border-border">
-              <p className="text-xs font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
+            <button
+              onClick={() => { navigate("/app/settings/account"); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
+            >
+              Account settings
+            </button>
             <button
               onClick={() => { navigate("/app/stylesheets"); setOpen(false); }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"

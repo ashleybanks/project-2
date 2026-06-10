@@ -14,6 +14,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod auth;
 mod docx;
+mod email;
 mod error;
 mod stylesheets;
 mod templates;
@@ -23,6 +24,12 @@ pub use error::AppError;
 #[derive(Clone)]
 pub struct AppState {
     pub db: sqlx::PgPool,
+    pub resend_api_key: String,
+    pub from_email: String,
+    pub api_base_url: String,
+    pub frontend_url: String,
+    pub google_client_id: String,
+    pub google_client_secret: String,
 }
 
 #[tokio::main]
@@ -39,6 +46,14 @@ async fn main() {
         .init();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let resend_api_key = std::env::var("RESEND_API_KEY").expect("RESEND_API_KEY must be set");
+    let from_email = std::env::var("FROM_EMAIL").expect("FROM_EMAIL must be set");
+    let api_base_url = std::env::var("API_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".into());
+    let frontend_url = std::env::var("FRONTEND_URL")
+        .unwrap_or_else(|_| "http://localhost:5173".into());
+    let google_client_id = std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set");
+    let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set");
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -51,7 +66,15 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
-    let state = AppState { db: pool };
+    let state = AppState {
+        db: pool,
+        resend_api_key,
+        from_email,
+        api_base_url,
+        frontend_url,
+        google_client_id,
+        google_client_secret,
+    };
 
     // Protected routes — require a valid session
     let protected = Router::new()

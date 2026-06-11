@@ -1,8 +1,4 @@
-## Purpose
-
-Manages workspace-level brand rules — typography and spacing defaults that seed new template stylesheets.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Workspace brand rules
 A workspace SHALL be able to define a single set of brand rules using the `StylesheetDef` structure: two global font tokens, two global colour tokens, and per-style sizing/spacing for all standard paragraph styles (normal, h1–h6, tableHeader, tableData). Brand rules are a workspace-level resource, not a per-user resource.

@@ -1,25 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listVersions, createVersion, restoreVersion } from "../lib/api";
-import type { Stylesheet, TemplateDetail, VersionSummary } from "../lib/api";
+import { listVersions, createVersion, restoreVersion, updateTemplate } from "../lib/api";
+import type { StylesheetDef, TemplateDetail, VersionSummary, PtTopLevel } from "../lib/api";
 import { useEditor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import StylesheetEditor from "@/components/StylesheetEditor";
+import { deriveVisibleStyles } from "@/lib/styleUtils";
 
 type Tab = "map" | "stylesheet" | "history";
 
 interface Props {
   templateId: string;
-  stylesheet: Stylesheet;
+  stylesheet: StylesheetDef;
+  blocks: PtTopLevel[];
   editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
   onCreateCheckpoint: (label: string) => Promise<VersionSummary>;
   onRestore: (template: TemplateDetail) => void;
+  onStylesheetChange: (s: StylesheetDef) => void;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export default function RightPanel({ templateId, stylesheet, editorRef, onCreateCheckpoint, onRestore, collapsed, onCollapsedChange }: Props) {
+export default function RightPanel({ templateId, stylesheet, blocks, editorRef, onCreateCheckpoint, onRestore, onStylesheetChange, collapsed, onCollapsedChange }: Props) {
   const storageKey = `rp-tab-${templateId}`;
 
   const [tab, setTab] = useState<Tab>(() => {
@@ -79,7 +83,14 @@ export default function RightPanel({ templateId, stylesheet, editorRef, onCreate
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
             {tab === "map"        && <DocumentMapTab editorRef={editorRef} />}
-            {tab === "stylesheet" && <StylesheetTab stylesheet={stylesheet} />}
+            {tab === "stylesheet" && (
+              <StylesheetTab
+                templateId={templateId}
+                stylesheet={stylesheet}
+                blocks={blocks}
+                onStylesheetChange={onStylesheetChange}
+              />
+            )}
             {tab === "history"    && (
               <HistoryTab
                 templateId={templateId}
@@ -191,37 +202,51 @@ function DocumentMapTab({ editorRef }: { editorRef: React.MutableRefObject<Retur
 
 // ── Stylesheet ─────────────────────────────────────────────────────────────────
 
-function StylesheetTab({ stylesheet }: { stylesheet: Stylesheet }) {
-  const effective = { ...stylesheet.brand_snapshot, ...stylesheet.overrides };
+function StylesheetTab({
+  templateId,
+  stylesheet,
+  blocks,
+  onStylesheetChange,
+}: {
+  templateId: string;
+  stylesheet: StylesheetDef;
+  blocks: PtTopLevel[];
+  onStylesheetChange: (s: StylesheetDef) => void;
+}) {
+  const [draft, setDraft] = useState<StylesheetDef>(stylesheet);
+  const prevPropRef = useRef(stylesheet);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (stylesheet !== prevPropRef.current) {
+      prevPropRef.current = stylesheet;
+      setDraft(stylesheet);
+    }
+  }, [stylesheet]);
+
+  const saveMut = useMutation({
+    mutationFn: (s: StylesheetDef) => updateTemplate(templateId, { stylesheet: s }),
+  });
+
+  function handleChange(next: StylesheetDef) {
+    setDraft(next);
+    onStylesheetChange(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      saveMut.mutate(next);
+    }, 2000);
+  }
+
+  const visibleStyles = deriveVisibleStyles(blocks);
 
   return (
-    <div className="p-4 space-y-3">
-      <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Active stylesheet</p>
-        <div className="rounded-md border border-border p-3 space-y-1.5 text-sm">
-          <Row label="Font" value={effective.fontFamily ?? "—"} />
-          <Row label="Size" value={effective.fontSize ? `${effective.fontSize}px` : "—"} />
-          <Row label="Heading font" value={effective.headingFont ?? "—"} />
-          <Row label="Accent colour" value={effective.accentColour ?? "—"} />
-          <Row label="Para spacing" value={effective.paragraphSpacing ? `${effective.paragraphSpacing}px` : "—"} />
-        </div>
-      </div>
-      <a
-        href="/app/stylesheets"
-        className="block text-sm text-primary hover:underline"
-      >
-        Edit brand rules →
-      </a>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium truncate">{value}</span>
-    </div>
+    <StylesheetEditor
+      value={draft}
+      onChange={handleChange}
+      visibleStyles={visibleStyles}
+      storageKey={`template-${templateId}`}
+      compact
+    />
   );
 }
 

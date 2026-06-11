@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from "@/components/AppLayout";
 
 export default function NewTemplatePage() {
   const navigate = useNavigate();
@@ -42,8 +43,7 @@ export default function NewTemplatePage() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="max-w-2xl mx-auto px-6 py-10">
+    <PageContainer>
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">New template</h1>
           <p className="text-base text-muted-foreground mt-0.5">Start blank or import an existing document</p>
@@ -94,7 +94,6 @@ export default function NewTemplatePage() {
         {status && (
           <p className="text-sm text-muted-foreground mt-6">{status}</p>
         )}
-      </div>
-    </div>
+    </PageContainer>
   );
 }

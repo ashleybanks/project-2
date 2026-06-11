@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from "@/components/AppLayout";
 
 export default function AccountSettingsPage() {
   const [profile, setProfile] = useState<AccountProfile | null>(null);
@@ -89,23 +90,23 @@ export default function AccountSettingsPage() {
 
   if (loadError) {
     return (
-      <div className="flex-1 overflow-y-auto">
-        <div className="w-2/3 mx-auto py-8 px-4 text-sm text-destructive">Failed to load account details.</div>
-      </div>
+      <PageContainer>
+        <p className="text-sm text-destructive">Failed to load account details.</p>
+      </PageContainer>
     );
   }
 
   if (!profile) {
     return (
-      <div className="flex-1 overflow-y-auto">
-        <div className="w-2/3 mx-auto py-8 px-4 text-sm text-muted-foreground">Loading…</div>
-      </div>
+      <PageContainer>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-    <div className="w-2/3 mx-auto py-8 px-4 space-y-6">
+    <PageContainer>
+      <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Account settings</h1>
 
       {/* ── Profile ─────────────────────────────────────────────────── */}
@@ -263,7 +264,7 @@ export default function AccountSettingsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

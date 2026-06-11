@@ -8,6 +8,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{AppState, AppError, auth::middleware::AuthUser};
+use crate::stylesheets::handlers::default_brand_rules;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,20 +81,18 @@ pub async fn create(
     Extension(user): Extension<AuthUser>,
     Json(body): Json<CreateRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Seed stylesheet from current brand rules snapshot
-    let brand_rules = sqlx::query_scalar!(
+    let stylesheet = sqlx::query_scalar!(
         "SELECT settings->'brand_rules' FROM users WHERE id = $1",
         user.user_id,
     )
     .fetch_optional(&state.db)
     .await?
     .flatten()
-    .unwrap_or_else(|| json!({}));
-
-    let stylesheet = json!({
-        "brand_snapshot": brand_rules,
-        "overrides": {}
-    });
+    .and_then(|v| match &v {
+        serde_json::Value::Object(o) if !o.is_empty() => Some(v),
+        _ => None,
+    })
+    .unwrap_or_else(default_brand_rules);
 
     let row = sqlx::query!(
         "INSERT INTO templates (user_id, name, block_model, stylesheet)
@@ -152,18 +151,13 @@ pub async fn update(
     Path(id): Path<Uuid>,
     Json(body): Json<UpdateRequest>,
 ) -> Result<Json<TemplateDetail>, AppError> {
-    // Merge stylesheet overrides into the stored stylesheet object.
-    let stylesheet_update = body.stylesheet.map(|overrides| json!({
-        "overrides": overrides
-    }));
-
     let row = sqlx::query!(
         "UPDATE templates
          SET name        = COALESCE($3, name),
              block_model = COALESCE($4, block_model),
              stylesheet  = CASE
                                WHEN $5::jsonb IS NOT NULL
-                               THEN stylesheet || $5::jsonb
+                               THEN $5::jsonb
                                ELSE stylesheet
                            END,
              updated_at  = NOW()
@@ -173,7 +167,7 @@ pub async fn update(
         user.user_id,
         body.name,
         body.block_model,
-        stylesheet_update,
+        body.stylesheet,
     )
     .fetch_optional(&state.db)
     .await?

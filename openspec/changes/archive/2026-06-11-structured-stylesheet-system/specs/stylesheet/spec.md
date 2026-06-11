@@ -1,8 +1,4 @@
-## Purpose
-
-Defines per-template stylesheets covering document-level and paragraph-level style rules, seeded from workspace brand rules and editable in the Stylesheets area.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Per-template stylesheet
 Each template SHALL have its own stylesheet stored as a `StylesheetDef`. The stylesheet SHALL be seeded from the workspace's brand rules at template creation time (as a full copy) and thereafter be fully independent. The previous snapshot+overrides structure is replaced by a single `StylesheetDef` document.
@@ -56,3 +52,9 @@ The Styles tab in the template editor's right-hand panel SHALL allow the user to
 #### Scenario: Auto-save on change
 - **WHEN** a user changes any field in the Styles tab
 - **THEN** the change SHALL be auto-saved to the template via `PUT /templates/:id` after a 2-second debounce
+
+## REMOVED Requirements
+
+### Requirement: Stylesheet editor in right panel (read-only)
+**Reason**: Replaced by the editable Styles tab with auto-save. The previous read-only display and "Edit brand rules →" link are removed.
+**Migration**: The `StylesheetTab` component is rewritten as an editable accordion; no user action required.

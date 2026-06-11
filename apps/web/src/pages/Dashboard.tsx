@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { signOut, useSession } from "../lib/auth-client";
+import { PageContainer } from "@/components/AppLayout";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -11,12 +12,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: "80px auto", padding: "0 16px" }}>
-      <h1>Dashboard</h1>
+    <PageContainer>
+      <h1 className="text-2xl font-semibold tracking-tight mb-2">Dashboard</h1>
       {session?.user && (
-        <p>Signed in as <strong>{session.user.email}</strong></p>
+        <p className="text-sm text-muted-foreground mb-6">
+          Signed in as <strong>{session.user.email}</strong>
+        </p>
       )}
-      <button onClick={handleSignOut}>Sign out</button>
-    </div>
+      <button
+        onClick={handleSignOut}
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        Sign out
+      </button>
+    </PageContainer>
   );
 }

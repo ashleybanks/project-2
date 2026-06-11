@@ -12,7 +12,7 @@ import { FieldIntentNode } from "../editor/FieldIntentNode";
 import { SectionNode } from "../editor/SectionNode";
 import { sectionNodeViewRenderer } from "../editor/SectionNodeView";
 import { ptToProsemirror, prosemirrorToPt } from "../lib/pt-bridge";
-import type { PtTopLevel } from "../lib/api";
+import type { PtTopLevel, StylesheetDef, ParagraphStyle } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,12 +26,100 @@ interface Props {
   blocks: PtTopLevel[];
   onChange: (blocks: PtTopLevel[]) => void;
   editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+  stylesheet?: StylesheetDef;
 }
 
-export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
+function ensureGoogleFont(fontName: string): void {
+  const id = `gfont-${fontName.toLowerCase().replace(/\s+/g, "-")}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;600;700&display=swap`;
+  document.head.appendChild(link);
+}
+
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+
+function buildBrandCSS(s: StylesheetDef): string {
+  const vars: string[] = [];
+  const rules: string[] = [];
+
+  // ── CSS custom properties ──────────────────────────────────────────────────
+  if (s.headingFont)   vars.push(`  --brand-heading-font: "${s.headingFont}"`);
+  if (s.headingColour) vars.push(`  --brand-heading-colour: ${s.headingColour}`);
+  if (s.bodyFont)      vars.push(`  --brand-body-font: "${s.bodyFont}"`);
+  if (s.bodyColour)    vars.push(`  --brand-body-colour: ${s.bodyColour}`);
+
+  for (const n of HEADING_LEVELS) {
+    const style = s[`h${n}` as keyof StylesheetDef] as ParagraphStyle | undefined;
+    if (style?.fontSize      !== undefined) vars.push(`  --brand-h${n}-size: ${style.fontSize}pt`);
+    if (style?.spacingBefore !== undefined) vars.push(`  --brand-h${n}-before: ${style.spacingBefore}pt`);
+    if (style?.spacingAfter  !== undefined) vars.push(`  --brand-h${n}-after: ${style.spacingAfter}pt`);
+  }
+  if (s.normal?.fontSize      !== undefined) vars.push(`  --brand-normal-size: ${s.normal.fontSize}pt`);
+  if (s.normal?.spacingBefore !== undefined) vars.push(`  --brand-normal-before: ${s.normal.spacingBefore}pt`);
+  if (s.normal?.spacingAfter  !== undefined) vars.push(`  --brand-normal-after: ${s.normal.spacingAfter}pt`);
+
+  if (vars.length) {
+    rules.push(`.brand-editor .ProseMirror {\n${vars.join(";\n")};\n}`);
+  }
+
+  // ── Per-heading rules ──────────────────────────────────────────────────────
+  for (const n of HEADING_LEVELS) {
+    const style = s[`h${n}` as keyof StylesheetDef] as ParagraphStyle | undefined;
+    const decls: string[] = [];
+    if (s.headingFont)                      decls.push(`font-family: var(--brand-heading-font), sans-serif`);
+    if (s.headingColour)                    decls.push(`color: var(--brand-heading-colour)`);
+    if (style?.fontSize      !== undefined) decls.push(`font-size: var(--brand-h${n}-size)`);
+    if (style?.spacingBefore !== undefined) decls.push(`margin-top: var(--brand-h${n}-before)`);
+    if (style?.spacingAfter  !== undefined) decls.push(`margin-bottom: var(--brand-h${n}-after)`);
+    if (decls.length) {
+      rules.push(`.brand-editor .ProseMirror h${n} {\n  ${decls.join(" !important;\n  ")} !important;\n}`);
+    }
+  }
+
+  // ── Body / normal rules ────────────────────────────────────────────────────
+  const bSel = [
+    ".brand-editor .ProseMirror p",
+    ".brand-editor .ProseMirror li",
+    ".brand-editor .ProseMirror td",
+    ".brand-editor .ProseMirror th",
+  ].join(",\n");
+  const bDecls: string[] = [];
+  if (s.bodyFont)                            bDecls.push(`font-family: var(--brand-body-font), sans-serif`);
+  if (s.bodyColour)                          bDecls.push(`color: var(--brand-body-colour)`);
+  if (s.normal?.fontSize      !== undefined) bDecls.push(`font-size: var(--brand-normal-size)`);
+  if (s.normal?.spacingBefore !== undefined) bDecls.push(`margin-top: var(--brand-normal-before)`);
+  if (s.normal?.spacingAfter  !== undefined) bDecls.push(`margin-bottom: var(--brand-normal-after)`);
+  if (bDecls.length) {
+    rules.push(`${bSel} {\n  ${bDecls.join(" !important;\n  ")} !important;\n}`);
+  }
+
+  return rules.join("\n\n");
+}
+
+export default function BlockCanvas({ blocks, onChange, editorRef, stylesheet }: Props) {
   const [intentPopover, setIntentPopover] = useState<IntentPopoverState | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (!stylesheet) return;
+    if (stylesheet.headingFont) ensureGoogleFont(stylesheet.headingFont);
+    if (stylesheet.bodyFont && stylesheet.bodyFont !== stylesheet.headingFont) {
+      ensureGoogleFont(stylesheet.bodyFont);
+    }
+    const id = "brand-editor-styles";
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement("style");
+      el.id = id;
+      document.head.appendChild(el);
+    }
+    el.textContent = buildBrandCSS(stylesheet);
+    return () => { document.getElementById(id)?.remove(); };
+  }, [stylesheet]);
 
   const editor = useEditor({
     extensions: [
@@ -113,7 +201,7 @@ export default function BlockCanvas({ blocks, onChange, editorRef }: Props) {
 
       {/* Editor surface */}
       <div
-        className="mt-3 rounded-lg border border-border bg-white px-8 py-6"
+        className="brand-editor mt-3 rounded-lg border border-border bg-white px-8 py-6"
         onContextMenu={(e) => { e.preventDefault(); showContextMenu(e.clientX, e.clientY); }}
       >
         <EditorContent editor={editor} />

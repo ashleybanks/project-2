@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { listTemplates, deleteTemplate } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { PageContainer } from "@/components/AppLayout";
 
 export default function TemplateListPage() {
   const navigate = useNavigate();
@@ -19,8 +20,7 @@ export default function TemplateListPage() {
   });
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="max-w-3xl mx-auto px-6 py-10">
+    <PageContainer>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
@@ -70,7 +70,6 @@ export default function TemplateListPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </PageContainer>
   );
 }

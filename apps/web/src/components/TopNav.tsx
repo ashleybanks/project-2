@@ -62,7 +62,7 @@ export default function TopNav() {
               onClick={() => { navigate("/app/stylesheets"); setOpen(false); }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
             >
-              Brand settings
+              Brand rules
             </button>
             <div className="border-t border-border mt-1 pt-1">
               <button

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getTemplate, updateTemplate, createVersion } from "../lib/api";
-import type { PtTopLevel, TemplateDetail } from "../lib/api";
+import type { PtTopLevel, TemplateDetail, StylesheetDef } from "../lib/api";
 import BlockCanvas from "../components/BlockCanvas";
 import RightPanel from "../components/RightPanel";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ export default function TemplatePage() {
 
   const [name, setName] = useState("");
   const [blocks, setBlocks] = useState<PtTopLevel[]>([]);
+  const [stylesheet, setStylesheet] = useState<StylesheetDef>({});
   const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [canvasKey, setCanvasKey] = useState(0);
@@ -44,6 +45,7 @@ export default function TemplatePage() {
       setTemplateDetail(templateData);
       setName(templateData.name);
       setBlocks(templateData.block_model.blocks);
+      setStylesheet(templateData.stylesheet);
     }
   }, [templateData]);
 
@@ -81,6 +83,7 @@ export default function TemplatePage() {
     setTemplateDetail(restoredTemplate);
     setName(restoredTemplate.name);
     setBlocks(restoredTemplate.block_model.blocks);
+    setStylesheet(restoredTemplate.stylesheet);
     setCanvasKey((k) => k + 1);
     qc.setQueryData(["template", id], restoredTemplate);
     qc.invalidateQueries({ queryKey: ["template", id] });
@@ -157,14 +160,16 @@ export default function TemplatePage() {
           })()}
 
           <div className="max-w-2xl mx-auto">
-            <BlockCanvas key={canvasKey} blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} />
+            <BlockCanvas key={canvasKey} blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} stylesheet={stylesheet} />
           </div>
         </main>
 
         <RightPanel
           templateId={id!}
-          stylesheet={templateDetail.stylesheet}
+          stylesheet={stylesheet}
+          blocks={blocks}
           editorRef={editorRef}
+          onStylesheetChange={setStylesheet}
           onCreateCheckpoint={(label) => createVersion(id!, label)}
           onRestore={handleRestore}
           collapsed={panelCollapsed}

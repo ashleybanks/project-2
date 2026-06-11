@@ -23,17 +23,40 @@ export interface TemplateSummary {
   updated_at: string;
 }
 
-export interface BrandRules {
-  fontFamily?: string;
+export type StyleKey =
+  | "normal"
+  | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+  | "tableHeader" | "tableData";
+
+export interface ParagraphStyle {
   fontSize?: number;
-  headingFont?: string;
-  accentColour?: string;
-  paragraphSpacing?: number;
+  spacingBefore?: number;
+  spacingAfter?: number;
 }
 
-export interface Stylesheet {
-  brand_snapshot?: BrandRules;
-  overrides?: Partial<BrandRules>;
+export interface TextStyle extends ParagraphStyle {
+  indentSize?: number;
+}
+
+export interface TableCellStyle extends ParagraphStyle {
+  lineWidth?: number;
+  lineColour?: string;
+}
+
+export interface StylesheetDef {
+  headingFont?: string;
+  bodyFont?: string;
+  headingColour?: string;
+  bodyColour?: string;
+  normal?: TextStyle;
+  h1?: ParagraphStyle;
+  h2?: ParagraphStyle;
+  h3?: ParagraphStyle;
+  h4?: ParagraphStyle;
+  h5?: ParagraphStyle;
+  h6?: ParagraphStyle;
+  tableHeader?: TableCellStyle;
+  tableData?: TableCellStyle;
 }
 
 export interface VersionSummary {
@@ -44,7 +67,7 @@ export interface VersionSummary {
 
 export interface TemplateDetail extends TemplateSummary {
   block_model: BlockModel;
-  stylesheet: Stylesheet;
+  stylesheet: StylesheetDef;
 }
 
 export interface BlockModel {
@@ -213,7 +236,7 @@ export const createTemplate = (name: string, block_model?: BlockModel) =>
 export const getTemplate = (id: string) =>
   apiFetch<TemplateDetail>(`/templates/${id}`);
 
-export const updateTemplate = (id: string, data: { name?: string; block_model?: BlockModel; stylesheet?: Partial<BrandRules> }) =>
+export const updateTemplate = (id: string, data: { name?: string; block_model?: BlockModel; stylesheet?: StylesheetDef }) =>
   apiFetch<TemplateDetail>(`/templates/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -223,10 +246,10 @@ export const deleteTemplate = (id: string) =>
   apiFetch<void>(`/templates/${id}`, { method: "DELETE" });
 
 export const getBrandRules = () =>
-  apiFetch<BrandRules>("/stylesheets/brand-rules");
+  apiFetch<StylesheetDef>("/stylesheets/brand-rules");
 
-export const updateBrandRules = (rules: BrandRules) =>
-  apiFetch<BrandRules>("/stylesheets/brand-rules", {
+export const updateBrandRules = (rules: StylesheetDef) =>
+  apiFetch<StylesheetDef>("/stylesheets/brand-rules", {
     method: "PUT",
     body: JSON.stringify(rules),
   });

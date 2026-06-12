@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getTemplate, updateTemplate, createVersion } from "../lib/api";
 import type { PtTopLevel, TemplateDetail, StylesheetDef } from "../lib/api";
 import BlockCanvas from "../components/BlockCanvas";
+import PreviewPane from "../components/PreviewPane";
 import RightPanel from "../components/RightPanel";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -124,28 +125,28 @@ export default function TemplatePage() {
 
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <main className="flex-1 overflow-y-auto px-8 pt-6 pb-8 relative">
+        <main className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto px-8 pt-6 pb-8"}`}>
           {/* Floating mode toggle — top aligned with the formatting toolbar */}
           {(() => {
             const iconOnly = !panelCollapsed;
             const items = [
-              { m: "build",   label: "Build",   Icon: PenLine,  title: undefined },
-              { m: "preview", label: "Preview", Icon: Eye,      title: "Available after intents are resolved" },
-              { m: "data",    label: "Data",    Icon: Database, title: "Available after data upload" },
+              { m: "build",   label: "Build",   Icon: PenLine,  enabled: true },
+              { m: "preview", label: "Preview", Icon: Eye,      enabled: true },
+              { m: "data",    label: "Data",    Icon: Database, enabled: false },
             ] as const;
             return (
               <div className="absolute top-6 right-8 z-10 flex rounded-md border border-border bg-white shadow-sm overflow-hidden">
-                {items.map(({ m, label, Icon, title }, i) => (
+                {items.map(({ m, label, Icon, enabled }, i) => (
                   <div key={m} className="flex items-stretch">
                     {i > 0 && <div className="w-px bg-border" />}
                     <button
-                      onClick={() => m === "build" && setMode(m)}
-                      disabled={m !== "build"}
-                      title={iconOnly ? label : title}
+                      onClick={() => enabled && setMode(m)}
+                      disabled={!enabled}
+                      title={(!enabled || iconOnly) ? label : undefined}
                       className={`flex items-center gap-1.5 px-3 h-9 text-sm font-medium transition-colors ${
                         mode === m
                           ? "bg-primary text-primary-foreground"
-                          : m !== "build"
+                          : !enabled
                           ? "text-muted-foreground/40 cursor-not-allowed"
                           : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
                       }`}
@@ -159,9 +160,13 @@ export default function TemplatePage() {
             );
           })()}
 
-          <div className="max-w-2xl mx-auto">
-            <BlockCanvas key={canvasKey} blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} stylesheet={stylesheet} />
-          </div>
+          {mode === "preview" ? (
+            <PreviewPane blocks={blocks} stylesheet={stylesheet} />
+          ) : (
+            <div className="max-w-2xl mx-auto">
+              <BlockCanvas key={canvasKey} blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} stylesheet={stylesheet} />
+            </div>
+          )}
         </main>
 
         <RightPanel

@@ -4070,6 +4070,7 @@ dependencies = [
  "typst",
  "typst-assets",
  "typst-pdf",
+ "wasm-bindgen",
 ]
 
 [[package]]

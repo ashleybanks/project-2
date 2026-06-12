@@ -18,7 +18,7 @@ fn spike_payload() -> serde_json::Value {
 #[test]
 fn end_to_end_render_produces_pdf() {
     let model = typst_compiler::model::spike_model();
-    let source = compile(&model);
+    let source = compile(&model, None);
 
     println!("=== Compiled Typst source ===\n{source}\n============================");
 

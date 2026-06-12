@@ -29,6 +29,7 @@ dev:
       "cd apps/api && cargo run" \
       "cd apps/web && npm run dev"
 
-# Build typst-compiler to Wasm (verifies Wasm compatibility)
-build-wasm:
-    cargo build --target wasm32-unknown-unknown -p typst-compiler
+# Build typst-compiler to Wasm for browser preview (requires wasm-pack 0.15+)
+# Install: cargo install wasm-pack
+wasm-build:
+    cd crates/typst-compiler && wasm-pack build --target bundler -d ../../apps/web/crates/typst-compiler/pkg -- --features wasm

@@ -1,5 +1,30 @@
 use serde::Deserialize;
 
+// ── Stylesheet ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StylesheetDef {
+    pub heading_font: Option<String>,
+    pub body_font: Option<String>,
+    pub heading_colour: Option<String>,
+    pub body_colour: Option<String>,
+    pub normal: Option<ParagraphStyle>,
+    pub h1: Option<ParagraphStyle>,
+    pub h2: Option<ParagraphStyle>,
+    pub h3: Option<ParagraphStyle>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ParagraphStyle {
+    pub font_size: Option<f64>,
+    pub spacing_before: Option<f64>,
+    pub spacing_after: Option<f64>,
+}
+
+// ── Block model ───────────────────────────────────────────────────────────────
+
 #[derive(Debug, Deserialize)]
 pub struct BlockModel {
     pub blocks: Vec<Block>,
@@ -11,6 +36,24 @@ pub enum Block {
     Text(TextBlock),
     Repeating(RepeatingBlock),
     Conditional(ConditionalBlock),
+    Table(TableBlock),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TableBlock {
+    pub rows: Vec<TableRow>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TableRow {
+    pub cells: Vec<TableCell>,
+    #[serde(default)]
+    pub is_header: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TableCell {
+    pub content: Vec<PtBlock>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +86,10 @@ pub struct PtBlock {
     pub block_type: String,
     pub style: Option<String>,
     pub children: Vec<PtChild>,
+    #[serde(rename = "listItem", default)]
+    pub list_item: Option<String>,
+    #[serde(default)]
+    pub level: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +143,8 @@ pub fn spike_model() -> BlockModel {
                 content: vec![PtBlock {
                     block_type: "block".into(),
                     style: Some("normal".into()),
+                    list_item: None,
+                    level: None,
                     children: vec![
                         PtChild::Span(PtSpan {
                             text: "Invoice for ".into(),
@@ -122,6 +171,8 @@ pub fn spike_model() -> BlockModel {
                     content: vec![PtBlock {
                         block_type: "block".into(),
                         style: Some("normal".into()),
+                        list_item: None,
+                        level: None,
                         children: vec![
                             PtChild::MergeField(PtMergeField {
                                 field: "item.description".into(),
@@ -141,6 +192,8 @@ pub fn spike_model() -> BlockModel {
                     content: vec![PtBlock {
                         block_type: "block".into(),
                         style: Some("normal".into()),
+                        list_item: None,
+                        level: None,
                         children: vec![PtChild::Span(PtSpan {
                             text: "No items on this invoice.".into(),
                             marks: vec![],
@@ -158,6 +211,8 @@ pub fn spike_model() -> BlockModel {
                     content: vec![PtBlock {
                         block_type: "block".into(),
                         style: Some("normal".into()),
+                        list_item: None,
+                        level: None,
                         children: vec![PtChild::Span(PtSpan {
                             text: "Payment received. Thank you.".into(),
                             marks: vec![],

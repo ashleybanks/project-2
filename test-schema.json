@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string",
+      "description": "Unique invoice reference"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "sent", "paid", "overdue"]
+    },
+    "client": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "company": { "type": "string" },
+        "address": {
+          "type": "object",
+          "properties": {
+            "line1":    { "type": "string" },
+            "city":     { "type": "string" },
+            "postcode": { "type": "string" },
+            "country":  { "type": "string" }
+          }
+        }
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "quantity":    { "type": "number" },
+          "unit_price":  { "type": "number" },
+          "total":       { "type": "number" }
+        }
+      }
+    },
+    "subtotal":    { "type": "number" },
+    "tax_rate":    { "type": "number" },
+    "tax_amount":  { "type": "number" },
+    "total_due":   { "type": "number" },
+    "currency":    { "type": "string" },
+    "notes":       { "type": "string" },
+    "paid":        { "type": "boolean" }
+  }
+}

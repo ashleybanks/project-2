@@ -8,7 +8,10 @@ use axum::{
 };
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
+use std::collections::HashSet;
 use std::net::SocketAddr;
+use std::sync::{Arc, RwLock};
+use uuid::Uuid;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -16,6 +19,7 @@ mod auth;
 mod docx;
 mod email;
 mod error;
+mod schema;
 mod stylesheets;
 mod templates;
 
@@ -30,6 +34,9 @@ pub struct AppState {
     pub frontend_url: String,
     pub google_client_id: String,
     pub google_client_secret: String,
+    pub ollama_base_url: String,
+    pub ollama_model: String,
+    pub resolving_schemas: Arc<RwLock<HashSet<Uuid>>>,
 }
 
 #[tokio::main]
@@ -54,6 +61,10 @@ async fn main() {
         .unwrap_or_else(|_| "http://localhost:5173".into());
     let google_client_id = std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set");
     let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set");
+    let ollama_base_url = std::env::var("OLLAMA_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:11434".into());
+    let ollama_model = std::env::var("OLLAMA_MODEL")
+        .unwrap_or_else(|_| "qwen3:8b".into());
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -74,12 +85,16 @@ async fn main() {
         frontend_url,
         google_client_id,
         google_client_secret,
+        ollama_base_url,
+        ollama_model,
+        resolving_schemas: Arc::new(RwLock::new(HashSet::new())),
     };
 
     // Protected routes — require a valid session
     let protected = Router::new()
         .route("/api/me", get(me))
         .nest("/api/templates", templates::router(state.clone()))
+        .nest("/api/templates", schema_nested_router(state.clone()))
         .nest("/api/stylesheets", stylesheets::router(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -112,6 +127,12 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+fn schema_nested_router(state: AppState) -> Router<AppState> {
+    Router::new()
+        .nest("/{id}/schema", schema::router(state.clone()))
+        .with_state(state)
 }
 
 async fn render_test() -> Response {

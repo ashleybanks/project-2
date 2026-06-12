@@ -1,4 +1,14 @@
-import type { PtBlock, PtSection, PtTopLevel, PtChild, PtSpan, PtFieldIntent, PtTable, PtTableRow, PtTableCell } from "./api";
+import type {
+  PtBlock,
+  PtSection,
+  PtTopLevel,
+  PtChild,
+  PtSpan,
+  PtFieldIntent,
+  PtTable,
+  PtTableRow,
+  PtTableCell,
+} from "./api";
 
 // ── PT → ProseMirror ──────────────────────────────────────────────────────────
 
@@ -85,9 +95,18 @@ function ptTableToPm(table: PtTable): PmNode {
 }
 
 // Build a single bulletList/orderedList node starting at `start`.
-function buildListGroup(blocks: PtBlock[], start: number): { node: PmNode; end: number } {
-  const listType = blocks[start].listItem === "bullet" ? "bulletList" : "orderedList";
-  const { items, end } = buildListLevel(blocks, start, 1, blocks[start].listItem!);
+function buildListGroup(
+  blocks: PtBlock[],
+  start: number,
+): { node: PmNode; end: number } {
+  const listType =
+    blocks[start].listItem === "bullet" ? "bulletList" : "orderedList";
+  const { items, end } = buildListLevel(
+    blocks,
+    start,
+    1,
+    blocks[start].listItem!,
+  );
   return { node: { type: listType, content: items }, end };
 }
 
@@ -107,7 +126,10 @@ function buildListLevel(
     const level = b.level ?? 1;
     if (level < targetLevel) break;
     if (level === targetLevel && b.listItem !== groupType) break;
-    if (level > targetLevel) { i++; continue; } // skip orphaned deeper items
+    if (level > targetLevel) {
+      i++;
+      continue;
+    } // skip orphaned deeper items
 
     const para: PmNode = {
       type: "paragraph",
@@ -125,7 +147,10 @@ function buildListLevel(
       const nestedType =
         blocks[i].listItem === "bullet" ? "bulletList" : "orderedList";
       const { items: nestedItems, end } = buildListLevel(
-        blocks, i, targetLevel + 1, blocks[i].listItem!,
+        blocks,
+        i,
+        targetLevel + 1,
+        blocks[i].listItem!,
       );
       itemContent.push({ type: nestedType, content: nestedItems });
       i = end;
@@ -146,13 +171,17 @@ function ptBlockToPm(block: PtBlock): PmNode | null {
     return {
       type: "heading",
       attrs,
-      content: (block.children ?? []).map(ptChildToPm).filter(Boolean) as PmNode[],
+      content: (block.children ?? [])
+        .map(ptChildToPm)
+        .filter(Boolean) as PmNode[],
     };
   }
   return {
     type: "paragraph",
     ...(Object.keys(attrs).length > 0 ? { attrs } : {}),
-    content: (block.children ?? []).map(ptChildToPm).filter(Boolean) as PmNode[],
+    content: (block.children ?? [])
+      .map(ptChildToPm)
+      .filter(Boolean) as PmNode[],
   };
 }
 
@@ -160,7 +189,12 @@ function ptChildToPm(child: PtChild): PmNode | null {
   if (child._type === "fieldIntent") {
     return {
       type: "fieldIntent",
-      attrs: { label: child.label, key: child._key },
+      attrs: {
+        label: child.label,
+        key: child._key,
+        display_name: child.display_name ?? null,
+        field_path: child.field_path ?? null,
+      },
     };
   }
   if (child._type === "span") {
@@ -178,20 +212,29 @@ function ptChildToPm(child: PtChild): PmNode | null {
 
 function markToPm(mark: string): object | null {
   switch (mark) {
-    case "strong":    return { type: "bold" };
-    case "em":        return { type: "italic" };
-    case "underline": return { type: "underline" };
-    case "strike":    return { type: "strike" };
-    case "sub":       return { type: "subscript" };
-    case "sup":       return { type: "superscript" };
-    default:          return null;
+    case "strong":
+      return { type: "bold" };
+    case "em":
+      return { type: "italic" };
+    case "underline":
+      return { type: "underline" };
+    case "strike":
+      return { type: "strike" };
+    case "sub":
+      return { type: "subscript" };
+    case "sup":
+      return { type: "superscript" };
+    default:
+      return null;
   }
 }
 
 // ── ProseMirror → PT ──────────────────────────────────────────────────────────
 
 let keyCounter = 1;
-function newKey() { return `k${keyCounter++}`; }
+function newKey() {
+  return `k${keyCounter++}`;
+}
 
 interface PmNode {
   type: string;
@@ -239,7 +282,11 @@ function extractPtBlocks(nodes: PmNode[]): Array<PtBlock | PtTable> {
       blocks.push(pmTableToPt(n));
     } else if (n.type === "bulletList" || n.type === "orderedList") {
       blocks.push(
-        ...extractListBlocks(n, n.type === "bulletList" ? "bullet" : "number", 1),
+        ...extractListBlocks(
+          n,
+          n.type === "bulletList" ? "bullet" : "number",
+          1,
+        ),
       );
     } else {
       const b = pmNodeToPtBlock(n);
@@ -278,15 +325,20 @@ function extractListBlocks(
     if (item.type !== "listItem") continue;
     for (const child of item.content ?? []) {
       if (child.type === "paragraph") {
-        const textAlign = (child.attrs?.textAlign as string | undefined) ?? undefined;
+        const textAlign =
+          (child.attrs?.textAlign as string | undefined) ?? undefined;
         blocks.push({
           _type: "block",
           _key: newKey(),
           style: "normal",
           listItem: listType,
           level,
-          ...(textAlign && textAlign !== "left" ? { textAlign: textAlign as PtBlock["textAlign"] } : {}),
-          children: (child.content ?? []).map(pmNodeToPtChild).filter(Boolean) as PtChild[],
+          ...(textAlign && textAlign !== "left"
+            ? { textAlign: textAlign as PtBlock["textAlign"] }
+            : {}),
+          children: (child.content ?? [])
+            .map(pmNodeToPtChild)
+            .filter(Boolean) as PtChild[],
         } satisfies PtBlock);
       } else if (child.type === "bulletList" || child.type === "orderedList") {
         blocks.push(
@@ -304,15 +356,20 @@ function extractListBlocks(
 
 function pmNodeToPtBlock(node: PmNode): PtBlock | null {
   if (node.type !== "paragraph" && node.type !== "heading") return null;
-  const level = node.type === "heading" ? (node.attrs?.level as number ?? 1) : null;
+  const level =
+    node.type === "heading" ? ((node.attrs?.level as number) ?? 1) : null;
   const style: string = level ? `h${level}` : "normal";
   const textAlign = (node.attrs?.textAlign as string | undefined) ?? undefined;
   return {
     _type: "block",
     _key: newKey(),
     style,
-    ...(textAlign && textAlign !== "left" ? { textAlign: textAlign as PtBlock["textAlign"] } : {}),
-    children: (node.content ?? []).map(pmNodeToPtChild).filter(Boolean) as PtChild[],
+    ...(textAlign && textAlign !== "left"
+      ? { textAlign: textAlign as PtBlock["textAlign"] }
+      : {}),
+    children: (node.content ?? [])
+      .map(pmNodeToPtChild)
+      .filter(Boolean) as PtChild[],
   } satisfies PtBlock;
 }
 
@@ -322,10 +379,14 @@ function pmNodeToPtChild(node: PmNode): PtChild | null {
       _type: "fieldIntent",
       _key: (node.attrs?.key as string) ?? newKey(),
       label: (node.attrs?.label as string) ?? "",
+      display_name: (node.attrs?.display_name as string | null) ?? undefined,
+      field_path: (node.attrs?.field_path as string | null) ?? undefined,
     } satisfies PtFieldIntent;
   }
   if (node.type === "text" && node.text) {
-    const marks = (node.marks ?? []).map((m) => pmMarkToPt(m.type)).filter(Boolean) as string[];
+    const marks = (node.marks ?? [])
+      .map((m) => pmMarkToPt(m.type))
+      .filter(Boolean) as string[];
     return {
       _type: "span",
       _key: newKey(),
@@ -338,12 +399,19 @@ function pmNodeToPtChild(node: PmNode): PtChild | null {
 
 function pmMarkToPt(type: string): string | null {
   switch (type) {
-    case "bold":        return "strong";
-    case "italic":      return "em";
-    case "underline":   return "underline";
-    case "strike":      return "strike";
-    case "subscript":   return "sub";
-    case "superscript": return "sup";
-    default:            return null;
+    case "bold":
+      return "strong";
+    case "italic":
+      return "em";
+    case "underline":
+      return "underline";
+    case "strike":
+      return "strike";
+    case "subscript":
+      return "sub";
+    case "superscript":
+      return "sup";
+    default:
+      return null;
   }
 }

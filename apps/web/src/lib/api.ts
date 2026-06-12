@@ -25,8 +25,14 @@ export interface TemplateSummary {
 
 export type StyleKey =
   | "normal"
-  | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
-  | "tableHeader" | "tableData";
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
+  | "tableHeader"
+  | "tableData";
 
 export interface ParagraphStyle {
   fontSize?: number;
@@ -93,6 +99,8 @@ export interface PtSection {
   conditionIntent?: string;
   repeatIntent?: string;
   content: Array<PtBlock | PtTable>;
+  display_name?: string;
+  collection_path?: string;
 }
 
 export interface PtTable {
@@ -127,6 +135,35 @@ export interface PtFieldIntent {
   _type: "fieldIntent";
   _key: string;
   label: string;
+  display_name?: string;
+  field_path?: string;
+}
+
+// ── Schema types ──────────────────────────────────────────────────────────────
+
+export type MappingConfidence = "high" | "medium" | "low" | "unresolved";
+export type IntentType = "field" | "repeat" | "condition";
+
+export interface IntentMapping {
+  id: string;
+  schema_id: string;
+  intent_key: string;
+  intent_label: string;
+  intent_type: IntentType;
+  display_name: string;
+  field_path: string | null;
+  confidence: MappingConfidence;
+  alternatives: string[];
+  parent_key: string | null;
+}
+
+export interface TemplateSchema {
+  id: string;
+  template_id: string;
+  created_at: string;
+  raw_schema: Record<string, unknown>;
+  mappings: IntentMapping[];
+  resolving: boolean;
 }
 
 // ── Auth API ──────────────────────────────────────────────────────────────────
@@ -159,7 +196,10 @@ export async function signUpWithEmail(
     body: JSON.stringify({ email, password, name }),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.error ?? res.statusText), { code: body.error });
+  if (!res.ok)
+    throw Object.assign(new Error(body.error ?? res.statusText), {
+      code: body.error,
+    });
   return body as SignUpResponse;
 }
 
@@ -174,11 +214,18 @@ export async function signInWithEmail(
     body: JSON.stringify({ email, password }),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.message ?? body.error ?? res.statusText), { code: body.error });
+  if (!res.ok)
+    throw Object.assign(
+      new Error(body.message ?? body.error ?? res.statusText),
+      { code: body.error },
+    );
   return body as SignInResponse | MfaRequiredResponse;
 }
 
-export async function submitMfaChallenge(mfa_token: string, code: string): Promise<void> {
+export async function submitMfaChallenge(
+  mfa_token: string,
+  code: string,
+): Promise<void> {
   const res = await fetch("/api/auth/mfa/challenge", {
     method: "POST",
     credentials: "include",
@@ -209,7 +256,10 @@ export async function requestPasswordReset(email: string): Promise<void> {
   });
 }
 
-export async function resetPassword(token: string, password: string): Promise<void> {
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<void> {
   const res = await fetch("/api/auth/reset-password", {
     method: "POST",
     credentials: "include",
@@ -224,8 +274,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
 
 // ── API functions ──────────────────────────────────────────────────────────────
 
-export const listTemplates = () =>
-  apiFetch<TemplateSummary[]>("/templates");
+export const listTemplates = () => apiFetch<TemplateSummary[]>("/templates");
 
 export const createTemplate = (name: string, block_model?: BlockModel) =>
   apiFetch<TemplateDetail>("/templates", {
@@ -236,7 +285,10 @@ export const createTemplate = (name: string, block_model?: BlockModel) =>
 export const getTemplate = (id: string) =>
   apiFetch<TemplateDetail>(`/templates/${id}`);
 
-export const updateTemplate = (id: string, data: { name?: string; block_model?: BlockModel; stylesheet?: StylesheetDef }) =>
+export const updateTemplate = (
+  id: string,
+  data: { name?: string; block_model?: BlockModel; stylesheet?: StylesheetDef },
+) =>
   apiFetch<TemplateDetail>(`/templates/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -267,6 +319,50 @@ export const restoreVersion = (id: string, versionId: string) =>
   apiFetch<TemplateDetail>(`/templates/${id}/versions/${versionId}/restore`, {
     method: "POST",
   });
+
+// ── Schema API ────────────────────────────────────────────────────────────────
+
+export const getSchema = (templateId: string) =>
+  apiFetch<TemplateSchema>(`/templates/${templateId}/schema`);
+
+export const uploadSchema = (
+  templateId: string,
+  schema: Record<string, unknown>,
+) =>
+  apiFetch<TemplateSchema>(`/templates/${templateId}/schema`, {
+    method: "POST",
+    body: JSON.stringify(schema),
+  });
+
+export const deleteSchema = (templateId: string) =>
+  apiFetch<void>(`/templates/${templateId}/schema`, { method: "DELETE" });
+
+export const triggerResolve = (templateId: string, intentKey?: string) =>
+  apiFetch<void>(`/templates/${templateId}/schema/resolve`, {
+    method: "POST",
+    body: JSON.stringify(intentKey ? { intent_key: intentKey } : {}),
+  });
+
+export const patchMapping = (
+  templateId: string,
+  intentKey: string,
+  data: { field_path?: string; display_name?: string },
+) =>
+  apiFetch<IntentMapping>(
+    `/templates/${templateId}/schema/mappings/${encodeURIComponent(intentKey)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    },
+  );
+
+export const generateTestData = (templateId: string, count = 10) =>
+  apiFetch<Record<string, unknown>[]>(
+    `/templates/${templateId}/schema/test-data?count=${count}`,
+    {
+      method: "POST",
+    },
+  );
 
 export const importDocx = async (file: File): Promise<BlockModel> => {
   const form = new FormData();

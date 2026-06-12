@@ -1,15 +1,63 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTemplate, updateTemplate, createVersion } from "../lib/api";
-import type { PtTopLevel, TemplateDetail, StylesheetDef } from "../lib/api";
+import {
+  getTemplate,
+  updateTemplate,
+  createVersion,
+  triggerResolve,
+} from "../lib/api";
+import type {
+  PtTopLevel,
+  TemplateDetail,
+  StylesheetDef,
+  PtBlock,
+  PtSection,
+  PtTable,
+} from "../lib/api";
 import BlockCanvas from "../components/BlockCanvas";
 import PreviewPane from "../components/PreviewPane";
 import RightPanel from "../components/RightPanel";
+import DataPane from "../components/DataPane";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@tiptap/react";
 import { PenLine, Eye, Database } from "lucide-react";
+
+function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const block of blocks) {
+    if (block._type === "block") {
+      for (const child of (block as PtBlock).children) {
+        if (child._type === "fieldIntent") result.set(child._key, child.label);
+      }
+    } else if (block._type === "section") {
+      const s = block as PtSection;
+      const label = s.conditionIntent ?? s.repeatIntent;
+      if (label) result.set(s._key, label);
+      for (const inner of s.content) {
+        if (inner._type === "block") {
+          for (const child of inner.children) {
+            if (child._type === "fieldIntent")
+              result.set(child._key, child.label);
+          }
+        }
+      }
+    } else if (block._type === "table") {
+      for (const row of (block as PtTable).rows) {
+        for (const cell of row.cells) {
+          for (const cellBlock of cell.content) {
+            for (const child of cellBlock.children) {
+              if (child._type === "fieldIntent")
+                result.set(child._key, child.label);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 
 export default function TemplatePage() {
   const { id } = useParams<{ id: string }>();
@@ -26,8 +74,12 @@ export default function TemplatePage() {
   const [name, setName] = useState("");
   const [blocks, setBlocks] = useState<PtTopLevel[]>([]);
   const [stylesheet, setStylesheet] = useState<StylesheetDef>({});
-  const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(
+    null,
+  );
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
   const [canvasKey, setCanvasKey] = useState(0);
   const [mode, setMode] = useState<"build" | "preview" | "data">("build");
   const [panelCollapsed, setPanelCollapsed] = useState(() => {
@@ -40,7 +92,7 @@ export default function TemplatePage() {
   }
 
   function handleModeChange(next: "build" | "preview" | "data") {
-    if (next === "preview" && !panelCollapsed) {
+    if ((next === "preview" || next === "data") && !panelCollapsed) {
       handlePanelCollapsedChange(true);
     }
     setMode(next);
@@ -48,6 +100,8 @@ export default function TemplatePage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
+  const prevIntentsRef = useRef<Map<string, string>>(new Map());
+  const pendingResolutionsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (templateData) {
@@ -55,16 +109,34 @@ export default function TemplatePage() {
       setName(templateData.name);
       setBlocks(templateData.block_model.blocks);
       setStylesheet(templateData.stylesheet);
+      prevIntentsRef.current = extractIntentLabels(
+        templateData.block_model.blocks,
+      );
     }
   }, [templateData]);
 
   const saveMut = useMutation({
-    mutationFn: (data: { name?: string; block_model?: { blocks: PtTopLevel[] } }) =>
-      updateTemplate(id!, data),
+    mutationFn: (data: {
+      name?: string;
+      block_model?: { blocks: PtTopLevel[] };
+    }) => updateTemplate(id!, data),
     onSuccess: () => {
       setSaveStatus("saved");
       qc.invalidateQueries({ queryKey: ["templates"] });
       setTimeout(() => setSaveStatus("idle"), 2000);
+
+      const keys = Array.from(pendingResolutionsRef.current);
+      pendingResolutionsRef.current.clear();
+      if (keys.length > 0) {
+        Promise.all(
+          keys.map((k) => triggerResolve(id!, k).catch(() => {})),
+        ).then(() =>
+          setTimeout(
+            () => qc.invalidateQueries({ queryKey: ["schema", id] }),
+            2500,
+          ),
+        );
+      }
     },
   });
 
@@ -77,6 +149,16 @@ export default function TemplatePage() {
   }
 
   function handleBlocksChange(newBlocks: PtTopLevel[]) {
+    const newIntents = extractIntentLabels(newBlocks);
+    for (const [key, label] of newIntents) {
+      if (
+        !prevIntentsRef.current.has(key) ||
+        prevIntentsRef.current.get(key) !== label
+      ) {
+        pendingResolutionsRef.current.add(key);
+      }
+    }
+    prevIntentsRef.current = newIntents;
     setBlocks(newBlocks);
     scheduleAutoSave(newBlocks, name);
   }
@@ -98,17 +180,19 @@ export default function TemplatePage() {
     qc.invalidateQueries({ queryKey: ["template", id] });
   }
 
-  if (isLoading) return (
-    <div className="flex-1 flex items-center justify-center">
-      <p className="text-sm text-muted-foreground">Loading…</p>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
 
-  if (!templateDetail) return (
-    <div className="flex-1 flex items-center justify-center">
-      <p className="text-sm text-muted-foreground">Template not found.</p>
-    </div>
-  );
+  if (!templateDetail)
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Template not found.</p>
+      </div>
+    );
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -127,14 +211,18 @@ export default function TemplatePage() {
           className="border-none shadow-none text-sm font-medium p-0 h-auto focus-visible:ring-0 max-w-xs"
         />
         <span className="text-xs text-muted-foreground">
-          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
+          {saveStatus === "saving"
+            ? "Saving…"
+            : saveStatus === "saved"
+              ? "Saved"
+              : ""}
         </span>
         <div className="ml-auto flex rounded-md border border-border shadow-sm overflow-hidden">
           {(
             [
-              { m: "build",   label: "Build",   Icon: PenLine,  enabled: true  },
-              { m: "preview", label: "Preview", Icon: Eye,      enabled: true  },
-              { m: "data",    label: "Data",    Icon: Database, enabled: false },
+              { m: "build", label: "Build", Icon: PenLine, enabled: true },
+              { m: "preview", label: "Preview", Icon: Eye, enabled: true },
+              { m: "data", label: "Data", Icon: Database, enabled: true },
             ] as const
           ).map(({ m, label, Icon, enabled }, i) => (
             <div key={m} className="flex items-stretch">
@@ -147,8 +235,8 @@ export default function TemplatePage() {
                   mode === m
                     ? "bg-primary text-primary-foreground"
                     : !enabled
-                    ? "text-muted-foreground/40 cursor-not-allowed"
-                    : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -161,12 +249,26 @@ export default function TemplatePage() {
 
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <main className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto px-8 pt-6 pb-8"}`}>
+        <main
+          className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}
+        >
           {mode === "preview" ? (
             <PreviewPane blocks={blocks} stylesheet={stylesheet} />
+          ) : mode === "data" ? (
+            <DataPane templateId={id!} />
           ) : (
-            <div className="max-w-2xl mx-auto">
-              <BlockCanvas key={canvasKey} blocks={blocks} onChange={handleBlocksChange} editorRef={editorRef} stylesheet={stylesheet} />
+            <div className="px-8 pt-6 pb-8">
+              <div className="max-w-2xl mx-auto">
+                <BlockCanvas
+                  key={canvasKey}
+                  blocks={blocks}
+                  onChange={handleBlocksChange}
+                  editorRef={editorRef}
+                  stylesheet={stylesheet}
+                  templateId={id!}
+                  onSwitchToData={() => handleModeChange("data")}
+                />
+              </div>
             </div>
           )}
         </main>

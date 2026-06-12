@@ -21,6 +21,7 @@ argon2 = "0.5"
 rand = "0.8"
 totp-rs = { version = "5", features = ["gen_secret"] }
 reqwest = { version = "0.12", features = ["json"] }
+anyhow = "1"
 urlencoding = "2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 quick-xml = { version = "0.37", features = ["encoding"] }

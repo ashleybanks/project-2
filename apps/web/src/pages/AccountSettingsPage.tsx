@@ -112,7 +112,7 @@ export default function AccountSettingsPage() {
       {/* ── Profile ─────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Profile</CardTitle>
+          <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateName} className="space-y-4">
@@ -143,7 +143,7 @@ export default function AccountSettingsPage() {
       {/* ── Security ────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Security</CardTitle>
+          <CardTitle>Security</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {profile.has_password && (
@@ -239,7 +239,7 @@ export default function AccountSettingsPage() {
       {/* ── Connected accounts ───────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Connected accounts</CardTitle>
+          <CardTitle>Connected accounts</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between py-1">

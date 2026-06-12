@@ -6,7 +6,7 @@ import { useEditor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import StylesheetEditor from "@/components/StylesheetEditor";
+import StylesheetEditorCompact from "@/components/StylesheetEditorCompact";
 import { deriveVisibleStyles } from "@/lib/styleUtils";
 
 type Tab = "map" | "stylesheet" | "history";
@@ -240,12 +240,11 @@ function StylesheetTab({
   const visibleStyles = deriveVisibleStyles(blocks);
 
   return (
-    <StylesheetEditor
+    <StylesheetEditorCompact
       value={draft}
       onChange={handleChange}
       visibleStyles={visibleStyles}
       storageKey={`template-${templateId}`}
-      compact
     />
   );
 }

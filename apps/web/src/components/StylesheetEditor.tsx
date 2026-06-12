@@ -11,7 +11,6 @@ interface Props {
   onChange: (v: StylesheetDef) => void;
   visibleStyles?: StyleKey[];
   storageKey?: string;
-  compact?: boolean;
 }
 
 type AccordionKey = "headings" | "text" | "tables";
@@ -23,7 +22,7 @@ const HEADING_LABEL: Record<string, string> = {
   h1: "H1", h2: "H2", h3: "H3", h4: "H4", h5: "H5", h6: "H6",
 };
 
-export default function StylesheetEditor({ value, onChange, visibleStyles, storageKey, compact = false }: Props) {
+export default function StylesheetEditor({ value, onChange, visibleStyles, storageKey }: Props) {
   const isVisible = (key: StyleKey) => !visibleStyles || visibleStyles.includes(key);
   const visibleHeadings = HEADING_KEYS.filter(k => isVisible(k));
   const showTables = isVisible("tableHeader") || isVisible("tableData");
@@ -54,247 +53,176 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
     onChange({ ...value, [styleKey]: hasValues ? updated as ParagraphStyle : undefined });
   }
 
-  // In compact mode wrap sections in a top-bordered container; normal uses card spacing
-  const wrapperCls = compact ? "border-t border-border" : "space-y-3";
-
   return (
-    <div className={wrapperCls}>
+    <div className="space-y-3">
       {/* Heading styles */}
       {visibleHeadings.length > 0 && (
-        <Section label="Heading styles" open={open.headings} onToggle={() => toggleSection("headings")} compact={compact}>
-          <div className="space-y-3">
-            <FontColourRow
-              fontLabel="Heading font" fontValue={value.headingFont}
-              onFontChange={v => setGlobal("headingFont", v || undefined)}
-              colourLabel="Heading colour" colourValue={value.headingColour}
-              onColourChange={v => setGlobal("headingColour", v)}
-              compact={compact}
-            />
-            <div className={cn("space-y-3", !compact && "border-t border-border pt-3")}>
-              {visibleHeadings.map(hk => (
-                <StyleEntry
-                  key={hk}
-                  label={HEADING_LABEL[hk]}
-                  style={(value[hk] as ParagraphStyle | undefined) ?? {}}
-                  extraFields={false}
-                  compact={compact}
-                  onChange={(f, v) => setStyleField(hk, f, v)}
-                />
-              ))}
-            </div>
-          </div>
-        </Section>
+        <Card size="sm">
+          <CardHeader
+            className={cn("cursor-pointer select-none", open.headings && "border-b border-border")}
+            onClick={() => toggleSection("headings")}
+          >
+            <CardTitle>Heading styles</CardTitle>
+            <CardAction>
+              {open.headings
+                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            </CardAction>
+          </CardHeader>
+          {open.headings && (
+            <CardContent>
+              <div className="space-y-3 w-2/3">
+                <div className="grid grid-cols-2 gap-4">
+                  <FontField label="Heading font" value={value.headingFont} onChange={v => setGlobal("headingFont", v || undefined)} />
+                  <ColourInput label="Heading colour" value={value.headingColour} onChange={v => setGlobal("headingColour", v)} />
+                </div>
+                <div className="border-t border-border pt-3 space-y-3">
+                  {visibleHeadings.map(hk => (
+                    <StyleEntry
+                      key={hk}
+                      label={HEADING_LABEL[hk]}
+                      style={(value[hk] as ParagraphStyle | undefined) ?? {}}
+                      extraFields={false}
+                      onChange={(f, v) => setStyleField(hk, f, v)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
       )}
 
       {/* Text styles */}
-      <Section label="Text styles" open={open.text} onToggle={() => toggleSection("text")} compact={compact}>
-        <div className="space-y-3">
-          <FontColourRow
-            fontLabel="Body font" fontValue={value.bodyFont}
-            onFontChange={v => setGlobal("bodyFont", v || undefined)}
-            colourLabel="Body colour" colourValue={value.bodyColour}
-            onColourChange={v => setGlobal("bodyColour", v)}
-            compact={compact}
-          />
-          <div className={cn(!compact && "border-t border-border pt-3")}>
-            <StyleEntry
-              label="Normal"
-              style={(value.normal as TextStyle | undefined) ?? {}}
-              extraFields="indent"
-              compact={compact}
-              onChange={(f, v) => setStyleField("normal", f, v)}
-            />
-          </div>
-        </div>
-      </Section>
+      <Card size="sm">
+        <CardHeader
+          className={cn("cursor-pointer select-none", open.text && "border-b border-border")}
+          onClick={() => toggleSection("text")}
+        >
+          <CardTitle>Text styles</CardTitle>
+          <CardAction>
+            {open.text
+              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </CardAction>
+        </CardHeader>
+        {open.text && (
+          <CardContent>
+            <div className="space-y-3 w-2/3">
+              <div className="grid grid-cols-2 gap-4">
+                <FontField label="Body font" value={value.bodyFont} onChange={v => setGlobal("bodyFont", v || undefined)} />
+                <ColourInput label="Body colour" value={value.bodyColour} onChange={v => setGlobal("bodyColour", v)} />
+              </div>
+              <div className="border-t border-border pt-3">
+                <StyleEntry
+                  label="Normal"
+                  style={(value.normal as TextStyle | undefined) ?? {}}
+                  extraFields="indent"
+                  onChange={(f, v) => setStyleField("normal", f, v)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Table styles */}
       {showTables && (
-        <Section label="Table styles" open={open.tables} onToggle={() => toggleSection("tables")} compact={compact}>
-          <div className="space-y-4">
-            {isVisible("tableHeader") && (
-              <TableStyleEntry
-                label="Header cells"
-                style={(value.tableHeader as TableCellStyle | undefined) ?? {}}
-                compact={compact}
-                onChange={(f, v) => setStyleField("tableHeader", f, v)}
-              />
-            )}
-            {isVisible("tableData") && (
-              <TableStyleEntry
-                label="Data cells"
-                style={(value.tableData as TableCellStyle | undefined) ?? {}}
-                compact={compact}
-                onChange={(f, v) => setStyleField("tableData", f, v)}
-              />
-            )}
-          </div>
-        </Section>
+        <Card size="sm">
+          <CardHeader
+            className={cn("cursor-pointer select-none", open.tables && "border-b border-border")}
+            onClick={() => toggleSection("tables")}
+          >
+            <CardTitle>Table styles</CardTitle>
+            <CardAction>
+              {open.tables
+                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            </CardAction>
+          </CardHeader>
+          {open.tables && (
+            <CardContent>
+              <div className="space-y-3 w-2/3">
+                {isVisible("tableHeader") && (
+                  <TableStyleEntry
+                    label="Header cells"
+                    style={(value.tableHeader as TableCellStyle | undefined) ?? {}}
+                    onChange={(f, v) => setStyleField("tableHeader", f, v)}
+                  />
+                )}
+                {isVisible("tableData") && (
+                  <TableStyleEntry
+                    label="Data cells"
+                    style={(value.tableData as TableCellStyle | undefined) ?? {}}
+                    onChange={(f, v) => setStyleField("tableData", f, v)}
+                  />
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
       )}
     </div>
   );
 }
 
-// ── Section — card on brand rules page, flat header in sidebar ─────────────
-
-function Section({
-  label, open, onToggle, compact, children,
-}: {
-  label: string;
-  open: boolean;
-  onToggle: () => void;
-  compact: boolean;
-  children: React.ReactNode;
-}) {
-  if (compact) {
-    return (
-      <div className="border-b border-border">
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-zinc-600 hover:text-foreground transition-colors"
-        >
-          <span>{label}</span>
-          {open
-            ? <ChevronDown className="w-3.5 h-3.5 shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
-        </button>
-        {open && <div className="px-3 pb-3">{children}</div>}
-      </div>
-    );
-  }
-
-  return (
-    <Card size="sm">
-      <CardHeader
-        className={cn("cursor-pointer select-none", open && "border-b border-border")}
-        onClick={onToggle}
-      >
-        <CardTitle>{label}</CardTitle>
-        <CardAction>
-          {open
-            ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-        </CardAction>
-      </CardHeader>
-      {open && <CardContent>{children}</CardContent>}
-    </Card>
-  );
-}
-
-// ── Font + colour — side by side (normal) or stacked (compact) ─────────────
-
-function FontColourRow({
-  fontLabel, fontValue, onFontChange,
-  colourLabel, colourValue, onColourChange,
-  compact,
-}: {
-  fontLabel: string; fontValue?: string; onFontChange: (v: string) => void;
-  colourLabel: string; colourValue?: string; onColourChange: (v: string | undefined) => void;
-  compact: boolean;
-}) {
-  if (compact) {
-    return (
-      <div className="space-y-2.5">
-        <FontField label={fontLabel} value={fontValue} onChange={onFontChange} />
-        <ColourInput label={colourLabel} value={colourValue} onChange={onColourChange} />
-      </div>
-    );
-  }
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <FontField label={fontLabel} value={fontValue} onChange={onFontChange} />
-      <ColourInput label={colourLabel} value={colourValue} onChange={onColourChange} />
-    </div>
-  );
-}
-
-// ── Style entry rows ──────────────────────────────────────────────────────────
+// ── Style entry rows ───────────────────────────────────────────────────────────
 
 function StyleEntry({
-  label, style, extraFields, compact, onChange,
+  label, style, extraFields, onChange,
 }: {
   label: string;
   style: ParagraphStyle & { indentSize?: number };
   extraFields: false | "indent";
-  compact: boolean;
   onChange: (field: string, val: number | undefined) => void;
 }) {
   return (
     <div>
-      <p className="text-xs font-medium text-foreground/70 mb-1.5">{label}</p>
-      {compact ? (
-        <div className="space-y-2">
-          <PtInput label="Font size" value={style.fontSize} onChange={v => onChange("fontSize", v)} />
-          <div className="grid grid-cols-2 gap-2">
-            <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-            <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
-          </div>
-          {extraFields === "indent" && (
-            <PtInput label="Indent" value={(style as TextStyle).indentSize} onChange={v => onChange("indentSize", v)} />
-          )}
-        </div>
-      ) : (
-        <div className={`grid ${extraFields === "indent" ? "grid-cols-4" : "grid-cols-3"} gap-4 w-1/2`}>
-          <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
-          <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-          <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
-          {extraFields === "indent" && (
-            <PtInput label="Indent" value={(style as TextStyle).indentSize} onChange={v => onChange("indentSize", v)} />
-          )}
-        </div>
-      )}
+      <Label className="text-base mb-3">{label}</Label>
+      <div className={`grid ${extraFields === "indent" ? "grid-cols-4" : "grid-cols-3"} gap-4`}>
+        <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
+        <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
+        <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
+        {extraFields === "indent" && (
+          <PtInput label="Indent" value={(style as TextStyle).indentSize} onChange={v => onChange("indentSize", v)} />
+        )}
+      </div>
     </div>
   );
 }
 
 function TableStyleEntry({
-  label, style, compact, onChange,
+  label, style, onChange,
 }: {
   label: string;
   style: TableCellStyle;
-  compact: boolean;
   onChange: (field: string, val: number | string | undefined) => void;
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-foreground/70">{label}</p>
-      {compact ? (
-        <>
-          <PtInput label="Font size" value={style.fontSize} onChange={v => onChange("fontSize", v)} />
-          <div className="grid grid-cols-2 gap-2">
-            <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-            <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <PtInput label="Line width" value={style.lineWidth} onChange={v => onChange("lineWidth", v)} />
-            <ColourInput label="Line colour" value={style.lineColour} onChange={v => onChange("lineColour", v)} />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-3 gap-4 w-1/2">
-            <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
-            <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-            <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2 items-end">
-            <PtInput label="Line width" value={style.lineWidth} onChange={v => onChange("lineWidth", v)} />
-            <ColourInput label="Line colour" value={style.lineColour} onChange={v => onChange("lineColour", v)} />
-          </div>
-        </>
-      )}
+      <Label className="text-base mb-3">{label}</Label>
+      <div className="grid grid-cols-3 gap-4">
+        <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
+        <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
+        <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 items-end">
+        <PtInput label="Line width" value={style.lineWidth} onChange={v => onChange("lineWidth", v)} />
+        <ColourInput label="Line colour" value={style.lineColour} onChange={v => onChange("lineColour", v)} />
+      </div>
     </div>
   );
 }
 
-// ── Field components ──────────────────────────────────────────────────────────
+// ── Shared field primitives (also used by StylesheetEditorCompact) ─────────────
 
-function FontField({
-  label, value, onChange,
+export function FontField({
+  label, value, onChange, labelClassName = "",
 }: {
   label: string;
   value?: string;
   onChange: (v: string) => void;
+  labelClassName?: string;
 }) {
   const groups = [
     { group: "Sans-serif", fonts: FONTS.filter(f => f.group === "Sans-serif") },
@@ -304,7 +232,7 @@ function FontField({
 
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label className={`text-muted-foreground ${labelClassName}`}>{label}</Label>
       <select
         className="w-full h-8 text-sm rounded-md border border-input bg-background px-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         value={value || ""}
@@ -323,12 +251,13 @@ function FontField({
   );
 }
 
-function ColourInput({
-  label, value, onChange,
+export function ColourInput({
+  label, value, onChange, labelClassName = "",
 }: {
   label: string;
   value?: string;
   onChange: (v: string | undefined) => void;
+  labelClassName?: string;
 }) {
   const pickerRef = useRef<HTMLInputElement>(null);
   const [hex, setHex] = useState(value?.replace("#", "") ?? "");
@@ -348,7 +277,7 @@ function ColourInput({
 
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label className={`text-muted-foreground ${labelClassName}`}>{label}</Label>
       <div className="flex h-8 rounded-md border border-input overflow-hidden bg-background">
         <button
           type="button"
@@ -373,16 +302,17 @@ function ColourInput({
   );
 }
 
-function PtInput({
-  label, value, onChange,
+export function PtInput({
+  label, value, onChange, labelClassName = "",
 }: {
   label: string;
   value?: number;
   onChange: (v: number | undefined) => void;
+  labelClassName?: string;
 }) {
   return (
     <div>
-      <span className="text-[10px] text-muted-foreground block mb-0.5">{label} (pt)</span>
+      <Label className={`text-muted-foreground mb-0.5 ${labelClassName}`}>{label} (pt)</Label>
       <input
         type="number"
         min={0}

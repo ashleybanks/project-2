@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tessia — Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ────────────────────────────────────────── */
+    :root {
+      --background:          oklch(0.982 0 0);
+      --foreground:          oklch(0.141 0 0);
+      --card:                oklch(1 0 0);
+      --card-foreground:     oklch(0.141 0 0);
+      --muted:               oklch(0.967 0 0);
+      --muted-foreground:    oklch(0.489 0 0);
+      --border:              oklch(0.896 0 0);
+      --input:               oklch(0.896 0 0);
+      --secondary:           oklch(0.967 0 0);
+      --secondary-foreground:oklch(0.141 0 0);
+      --destructive:         oklch(0.577 0.245 27.325);
+      --radius-sm:           0.125rem; /* 2px */
+      --radius-md:           0.25rem;  /* 4px */
+      --radius-lg:           0.375rem; /* 6px */
+      --radius-xl:           0.5rem;   /* 8px */
+      --radius:              0.25rem;  /* 4px — base alias */
+
+      /* Default primary — indigo */
+      --primary:             oklch(0.499 0.190 265);
+      --primary-foreground:  oklch(1 0 0);
+      --ring:                oklch(0.499 0.190 265);
+      --primary-subtle:      oklch(0.499 0.190 265 / 0.08);
+      --primary-label:       "Indigo";
+    }
+
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+    body {
+      font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .page { max-width: 960px; margin: 0 auto; padding: 48px 32px 96px; }
+
+    .section { display: flex; flex-direction: column; gap: 24px; padding: 48px 0; border-top: 1px solid var(--border); }
+    .section:first-child { border-top: none; padding-top: 0; }
+
+    .section-header { display: flex; flex-direction: column; gap: 4px; }
+    .section-title { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .col { display: flex; flex-direction: column; gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    /* ── Color switcher ───────────────────────────────────────── */
+    .switcher-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .switcher-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+
+    .switcher-options { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .color-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      font-family: 'Figtree', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--foreground);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .color-option:hover { border-color: var(--muted-foreground); }
+
+    .color-option.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-subtle);
+    }
+
+    .color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      font-family: 'Figtree', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      line-height: 1.5;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: opacity 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn-default {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .btn-default:hover { opacity: 0.9; }
+
+    .btn-secondary {
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+    }
+    .btn-secondary:hover { background: var(--muted); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--foreground);
+      border-color: var(--border);
+    }
+    .btn-outline:hover { background: var(--muted); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--foreground);
+    }
+    .btn-ghost:hover { background: var(--muted); }
+
+    .btn-destructive {
+      background: var(--destructive);
+      color: oklch(1 0 0);
+    }
+    .btn-destructive:hover { opacity: 0.9; }
+
+    .btn-link {
+      background: transparent;
+      color: var(--primary);
+      padding-left: 0;
+      padding-right: 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .btn-sm { padding: 4px 10px; font-size: 0.8125rem; }
+    .btn-lg { padding: 10px 20px; font-size: 1rem; }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* ── Inputs ───────────────────────────────────────────────── */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+
+    input[type="text"], input[type="email"], select, textarea {
+      width: 100%;
+      padding: 6px 12px;
+      border: 1.5px solid var(--input);
+      border-radius: var(--radius-md);
+      background: var(--card);
+      color: var(--foreground);
+      font-family: 'Figtree', sans-serif;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-subtle);
+    }
+
+    input::placeholder { color: var(--muted-foreground); }
+
+    .helper-text { font-size: 0.8125rem; color: var(--muted-foreground); }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-header { padding: 20px 24px 0; }
+    .card-title { font-size: 1rem; font-weight: 600; }
+    .card-description { font-size: 0.875rem; color: var(--muted-foreground); margin-top: 4px; }
+    .card-content { padding: 16px 24px 24px; }
+    .card-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ── Badges ───────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    .badge-default { background: var(--primary); color: var(--primary-foreground); }
+    .badge-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+    .badge-outline { border: 1.5px solid var(--border); color: var(--foreground); }
+    .badge-destructive { background: var(--destructive); color: oklch(1 0 0); }
+
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .tabs { display: flex; flex-direction: column; gap: 16px; }
+
+    .tab-list {
+      display: flex;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .tab-trigger {
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1.5px;
+      font-family: 'Figtree', sans-serif;
+      transition: color 0.15s;
+    }
+
+    .tab-trigger:hover { color: var(--foreground); }
+    .tab-trigger.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Color swatches ───────────────────────────────────────── */
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+
+    .swatch {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .swatch-block {
+      height: 64px;
+      border-radius: var(--radius-md);
+      border: 1px solid oklch(0 0 0 / 0.08);
+    }
+
+    .swatch-name {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+
+    .swatch-token {
+      font-size: 0.6875rem;
+      color: var(--muted-foreground);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* ── Typography specimens ─────────────────────────────────── */
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .type-row:last-child { border-bottom: none; }
+
+    .type-meta {
+      width: 120px;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-family: ui-monospace, monospace;
+      color: var(--muted-foreground);
+    }
+
+    /* ── Separator ────────────────────────────────────────────── */
+    .sep { height: 1px; background: var(--border); }
+
+    /* ── Alert / callout ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 0.875rem;
+    }
+
+    .alert-primary {
+      border-color: var(--primary);
+      background: var(--primary-subtle);
+    }
+
+    .alert-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .alert-title { font-weight: 600; margin-bottom: 2px; }
+    .alert-body { color: var(--muted-foreground); }
+
+    /* ── Page mockup ──────────────────────────────────────────── */
+    .mockup {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--background);
+    }
+
+    .mockup-nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mockup-brand {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--foreground);
+      letter-spacing: -0.01em;
+    }
+
+    .mockup-brand span { color: var(--primary); }
+
+    .mockup-nav-right { display: flex; align-items: center; gap: 8px; }
+
+    .mockup-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary-subtle);
+      border: 1.5px solid var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .mockup-body { padding: 32px; }
+
+    .mockup-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .mockup-page-title { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+    .mockup-page-subtitle { font-size: 0.875rem; color: var(--muted-foreground); margin-top: 4px; }
+
+    .mockup-table { width: 100%; border-collapse: collapse; }
+    .mockup-table th {
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted-foreground);
+      padding: 10px 12px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .mockup-table td {
+      padding: 12px;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .mockup-table tr:last-child td { border-bottom: none; }
+    .mockup-table tr:hover td { background: var(--muted); }
+
+    .doc-name { font-weight: 500; }
+    .doc-meta { font-size: 0.8125rem; color: var(--muted-foreground); margin-top: 2px; }
+
+    /* ── Spacing scale ────────────────────────────────────────── */
+    .space-row { display: flex; align-items: center; gap: 16px; }
+    .space-bar-wrap { flex: 1; display: flex; align-items: center; gap: 12px; }
+    .space-bar { height: 24px; background: var(--primary-subtle); border: 1px solid var(--primary); border-radius: 3px; }
+    .space-label { font-size: 0.75rem; font-family: ui-monospace, monospace; color: var(--muted-foreground); width: 120px; flex-shrink: 0; }
+
+    /* ── Misc ─────────────────────────────────────────────────── */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      background: var(--muted);
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-family: ui-monospace, monospace;
+      color: var(--muted-foreground);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Color switcher ──────────────────────────────────────── -->
+  <div class="switcher-bar">
+    <span class="switcher-label">Primary colour</span>
+    <div class="switcher-options">
+      <button class="color-option active" onclick="setColor('indigo')" id="btn-indigo">
+        <span class="color-dot" style="background: oklch(0.499 0.190 265)"></span>
+        Indigo
+      </button>
+      <button class="color-option" onclick="setColor('violet')" id="btn-violet">
+        <span class="color-dot" style="background: oklch(0.500 0.215 288)"></span>
+        Violet
+      </button>
+      <button class="color-option" onclick="setColor('blue')" id="btn-blue">
+        <span class="color-dot" style="background: oklch(0.520 0.140 248)"></span>
+        Blue
+      </button>
+      <button class="color-option" onclick="setColor('teal')" id="btn-teal">
+        <span class="color-dot" style="background: oklch(0.510 0.120 196)"></span>
+        Teal
+      </button>
+      <button class="color-option" onclick="setColor('orange')" id="btn-orange">
+        <span class="color-dot" style="background: #ea580c"></span>
+        Orange
+      </button>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- ── Title ──────────────────────────────────────────────── -->
+    <div class="section" style="border-top: none; padding-top: 0; padding-bottom: 40px;">
+      <div>
+        <h1 style="font-size: 2.25rem; letter-spacing: -0.02em;">Tessia Design System</h1>
+        <p style="color: var(--muted-foreground); margin-top: 6px; font-size: 1rem;">Switch the primary colour above to compare options across all components.</p>
+      </div>
+    </div>
+
+
+    <!-- ── Colour palette ─────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Colour palette</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">All semantic tokens. Use these in components — never raw zinc/gray classes.</p>
+      </div>
+
+      <div style="margin-bottom: 8px;">
+        <p style="font-size: 0.8125rem; font-weight: 600; color: var(--muted-foreground); margin-bottom: 12px;">Primary</p>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--primary);"></div>
+            <span class="swatch-name">Primary</span>
+            <span class="swatch-token">bg-primary</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--primary-subtle);"></div>
+            <span class="swatch-name">Primary subtle</span>
+            <span class="swatch-token">primary/8%</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 8px;">
+        <p style="font-size: 0.8125rem; font-weight: 600; color: var(--muted-foreground); margin-bottom: 12px;">Surfaces</p>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--background); border: 1px solid var(--border);"></div>
+            <span class="swatch-name">Background</span>
+            <span class="swatch-token">bg-background</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--card); border: 1px solid var(--border);"></div>
+            <span class="swatch-name">Card</span>
+            <span class="swatch-token">bg-card</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--muted);"></div>
+            <span class="swatch-name">Muted</span>
+            <span class="swatch-token">bg-muted</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--secondary);"></div>
+            <span class="swatch-name">Secondary</span>
+            <span class="swatch-token">bg-secondary</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p style="font-size: 0.8125rem; font-weight: 600; color: var(--muted-foreground); margin-bottom: 12px;">Text & borders</p>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--foreground);"></div>
+            <span class="swatch-name">Foreground</span>
+            <span class="swatch-token">text-foreground</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--muted-foreground);"></div>
+            <span class="swatch-name">Muted fg</span>
+            <span class="swatch-token">text-muted-fg</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--border);"></div>
+            <span class="swatch-name">Border</span>
+            <span class="swatch-token">border-border</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-block" style="background: var(--destructive);"></div>
+            <span class="swatch-name">Destructive</span>
+            <span class="swatch-token">text-destructive</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Typography ─────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Typography</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">Figtree variable — 8px grid type scale.</p>
+      </div>
+
+      <div>
+        <div class="type-row">
+          <div class="type-meta">text-5xl / 48px</div>
+          <div style="font-size: 3rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15;">Display heading</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-4xl / 36px</div>
+          <div style="font-size: 2.25rem; font-weight: 600; letter-spacing: -0.02em;">Page hero title</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-3xl / 30px</div>
+          <div style="font-size: 1.875rem; font-weight: 600; letter-spacing: -0.015em;">Section heading</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-2xl / 24px</div>
+          <div style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em;">Page title</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-xl / 20px</div>
+          <div style="font-size: 1.25rem; font-weight: 600;">Panel heading</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-lg / 18px</div>
+          <div style="font-size: 1.125rem; font-weight: 600;">Sub-heading</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-base / 16px</div>
+          <div style="font-size: 1rem;">Body text. The quick brown fox jumps over the lazy dog.</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-sm / 14px</div>
+          <div style="font-size: 0.875rem; color: var(--muted-foreground);">Secondary label, helper text, descriptions.</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta">text-xs / 12px</div>
+          <div style="font-size: 0.75rem; color: var(--muted-foreground);">Timestamps, captions, meta only.</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Buttons ────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Buttons</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">One primary per view region. Verb-first labels.</p>
+      </div>
+
+      <div class="col">
+        <div>
+          <p style="font-size: 0.8125rem; font-weight: 500; color: var(--muted-foreground); margin-bottom: 10px;">Variants</p>
+          <div class="row">
+            <button class="btn btn-default">Save changes</button>
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-outline">Export</button>
+            <button class="btn btn-ghost">Dismiss</button>
+            <button class="btn btn-destructive">Delete document</button>
+            <button class="btn btn-link">View all →</button>
+          </div>
+        </div>
+
+        <div>
+          <p style="font-size: 0.8125rem; font-weight: 500; color: var(--muted-foreground); margin-bottom: 10px;">Sizes</p>
+          <div class="row" style="align-items: center;">
+            <button class="btn btn-default btn-lg">Large button</button>
+            <button class="btn btn-default">Default</button>
+            <button class="btn btn-default btn-sm">Small</button>
+          </div>
+        </div>
+
+        <div>
+          <p style="font-size: 0.8125rem; font-weight: 500; color: var(--muted-foreground); margin-bottom: 10px;">States</p>
+          <div class="row">
+            <button class="btn btn-default">Active</button>
+            <button class="btn btn-default" disabled>Disabled</button>
+            <button class="btn btn-outline" disabled>Disabled outline</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Forms ──────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Form elements</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">Every input has a visible label. Helper text below where needed.</p>
+      </div>
+
+      <div class="grid-2" style="gap: 20px;">
+        <div class="form-group">
+          <label for="ex-name">Full name</label>
+          <input type="text" id="ex-name" placeholder="Sarah Mitchell">
+        </div>
+
+        <div class="form-group">
+          <label for="ex-email">Email address</label>
+          <input type="email" id="ex-email" placeholder="sarah@chambers.co.uk">
+          <span class="helper-text">Used for document delivery.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="ex-type">Document type</label>
+          <select id="ex-type">
+            <option>Non-disclosure agreement</option>
+            <option>Employment contract</option>
+            <option>Service agreement</option>
+            <option>Shareholder agreement</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ex-ref">Matter reference</label>
+          <input type="text" id="ex-ref" placeholder="MIC-2026-001">
+          <span class="helper-text">Optional. Appears in document footer.</span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Cards & badges ─────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Cards & badges</span>
+      </div>
+
+      <div class="grid-2" style="gap: 16px; align-items: start;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Non-disclosure agreement</div>
+            <div class="card-description">Mutual NDA for technology partnerships.</div>
+          </div>
+          <div class="card-content">
+            <div class="row" style="gap: 6px; margin-bottom: 12px;">
+              <span class="badge badge-secondary">Contract</span>
+              <span class="badge badge-outline">v2.4</span>
+            </div>
+            <p style="font-size: 0.875rem; color: var(--muted-foreground);">Last edited 2 hours ago · 4 fields</p>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-ghost btn-sm">Preview</button>
+            <button class="btn btn-default btn-sm">Generate</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Employment contract</div>
+            <div class="card-description">Standard fixed-term employment agreement.</div>
+          </div>
+          <div class="card-content">
+            <div class="row" style="gap: 6px; margin-bottom: 12px;">
+              <span class="badge badge-default">Active</span>
+              <span class="badge badge-outline">v1.1</span>
+            </div>
+            <p style="font-size: 0.875rem; color: var(--muted-foreground);">Last edited yesterday · 11 fields</p>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-ghost btn-sm">Preview</button>
+            <button class="btn btn-default btn-sm">Generate</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p style="font-size: 0.8125rem; font-weight: 500; color: var(--muted-foreground); margin-bottom: 10px;">Badge variants</p>
+        <div class="row">
+          <span class="badge badge-default">Active</span>
+          <span class="badge badge-secondary">Draft</span>
+          <span class="badge badge-outline">Archived</span>
+          <span class="badge badge-destructive">Expired</span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Tabs & alerts ──────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Tabs & alerts</span>
+      </div>
+
+      <div class="tabs">
+        <div class="tab-list">
+          <button class="tab-trigger active">Documents</button>
+          <button class="tab-trigger">Templates</button>
+          <button class="tab-trigger">Settings</button>
+        </div>
+      </div>
+
+      <div class="col" style="gap: 10px; margin-top: 4px;">
+        <div class="alert alert-primary">
+          <div class="alert-icon">✦</div>
+          <div>
+            <div class="alert-title">AI suggestion</div>
+            <div class="alert-body">This clause is non-standard. Similar agreements use "reasonable notice" rather than a fixed 30-day period.</div>
+          </div>
+        </div>
+        <div class="alert">
+          <div class="alert-icon" style="color: var(--muted-foreground);">ℹ</div>
+          <div>
+            <div class="alert-title">Document generated</div>
+            <div class="alert-body">NDA for Apex Technologies Ltd has been created and is ready to download.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Spacing scale ──────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Spacing scale</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">8px base grid. All values are multiples of 4px.</p>
+      </div>
+
+      <div class="col" style="gap: 8px;">
+        <div class="space-row"><div class="space-label">4px — gap-1</div><div class="space-bar-wrap"><div class="space-bar" style="width: 4px;"></div></div></div>
+        <div class="space-row"><div class="space-label">6px — gap-1.5</div><div class="space-bar-wrap"><div class="space-bar" style="width: 6px;"></div></div></div>
+        <div class="space-row"><div class="space-label">8px — gap-2</div><div class="space-bar-wrap"><div class="space-bar" style="width: 8px;"></div></div></div>
+        <div class="space-row"><div class="space-label">12px — gap-3</div><div class="space-bar-wrap"><div class="space-bar" style="width: 12px;"></div></div></div>
+        <div class="space-row"><div class="space-label">16px — gap-4</div><div class="space-bar-wrap"><div class="space-bar" style="width: 16px;"></div></div></div>
+        <div class="space-row"><div class="space-label">24px — gap-6</div><div class="space-bar-wrap"><div class="space-bar" style="width: 24px;"></div></div></div>
+        <div class="space-row"><div class="space-label">32px — gap-8</div><div class="space-bar-wrap"><div class="space-bar" style="width: 32px;"></div></div></div>
+        <div class="space-row"><div class="space-label">40px — py-10</div><div class="space-bar-wrap"><div class="space-bar" style="width: 40px;"></div></div></div>
+      </div>
+    </div>
+
+
+    <!-- ── Page mockup ────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Page mockup</span>
+        <p style="font-size: 0.875rem; color: var(--muted-foreground);">How a standard list page looks with the selected colour.</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-nav">
+          <div class="mockup-brand">Tess<span>ia</span></div>
+          <div class="mockup-nav-right">
+            <button class="btn btn-ghost btn-sm" style="font-size: 0.8125rem;">Templates</button>
+            <button class="btn btn-ghost btn-sm" style="font-size: 0.8125rem;">Documents</button>
+            <div class="mockup-avatar">AB</div>
+          </div>
+        </div>
+
+        <div class="mockup-body">
+          <div class="mockup-page-header">
+            <div>
+              <div class="mockup-page-title">Documents</div>
+              <div class="mockup-page-subtitle">12 documents generated this month</div>
+            </div>
+            <button class="btn btn-default btn-sm">New document</button>
+          </div>
+
+          <div class="card" style="overflow: hidden;">
+            <table class="mockup-table">
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Template</th>
+                  <th>Status</th>
+                  <th>Generated</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="doc-name">NDA — Apex Technologies</div>
+                    <div class="doc-meta">Apex Technologies Ltd · Sarah Mitchell</div>
+                  </td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Mutual NDA</td>
+                  <td><span class="badge badge-default">Complete</span></td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Today, 11:24</td>
+                  <td style="text-align: right;"><button class="btn btn-ghost btn-sm">Download</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="doc-name">Employment — R. Chambers</div>
+                    <div class="doc-meta">Meridian Group · Fixed term, 12 months</div>
+                  </td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Employment</td>
+                  <td><span class="badge badge-secondary">Draft</span></td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Yesterday</td>
+                  <td style="text-align: right;"><button class="btn btn-ghost btn-sm">Continue</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="doc-name">Service agreement — Nova Ltd</div>
+                    <div class="doc-meta">Nova Digital Ltd · 6-month retainer</div>
+                  </td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Service</td>
+                  <td><span class="badge badge-default">Complete</span></td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">2 Jun</td>
+                  <td style="text-align: right;"><button class="btn btn-ghost btn-sm">Download</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="doc-name">Shareholder agreement</div>
+                    <div class="doc-meta">Thornton Capital · 3 parties</div>
+                  </td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">Shareholder</td>
+                  <td><span class="badge badge-destructive">Expired</span></td>
+                  <td style="color: var(--muted-foreground); font-size: 0.8125rem;">14 May</td>
+                  <td style="text-align: right;"><button class="btn btn-ghost btn-sm">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const colors = {
+      indigo: {
+        primary: 'oklch(0.499 0.190 265)',
+        subtle:  'oklch(0.499 0.190 265 / 0.08)',
+      },
+      violet: {
+        primary: 'oklch(0.500 0.215 288)',
+        subtle:  'oklch(0.500 0.215 288 / 0.08)',
+      },
+      blue: {
+        primary: 'oklch(0.520 0.140 248)',
+        subtle:  'oklch(0.520 0.140 248 / 0.08)',
+      },
+      teal: {
+        primary: 'oklch(0.510 0.120 196)',
+        subtle:  'oklch(0.510 0.120 196 / 0.08)',
+      },
+      orange: {
+        primary: 'oklch(0.647 0.222 41)',
+        subtle:  'oklch(0.647 0.222 41 / 0.08)',
+      },
+    };
+
+    function setColor(name) {
+      const c = colors[name];
+      document.documentElement.style.setProperty('--primary', c.primary);
+      document.documentElement.style.setProperty('--ring',    c.primary);
+      document.documentElement.style.setProperty('--primary-subtle', c.subtle);
+
+      document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+      document.getElementById('btn-' + name).classList.add('active');
+    }
+  </script>
+</body>
+</html>

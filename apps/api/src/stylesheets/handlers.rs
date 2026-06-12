@@ -8,8 +8,8 @@ use crate::{AppState, AppError, auth::middleware::AuthUser};
 
 pub(crate) fn default_brand_rules() -> Value {
     json!({
-        "headingFont": "Inter",
-        "bodyFont": "Inter",
+        "headingFont": "Figtree",
+        "bodyFont": "Figtree",
         "headingColour": "#1A1A1A",
         "bodyColour": "#374151",
         "h1": { "fontSize": 20, "spacingBefore": 12, "spacingAfter": 6 },

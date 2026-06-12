@@ -22,6 +22,8 @@ fn preamble(stylesheet: Option<&StylesheetDef>) -> String {
         r#"#set page(paper: "a4", margin: (x: 2.5cm, y: 2cm))"#.to_owned(),
         format!("#set text(font: \"{body_font}\", size: {font_size}pt)"),
         "#set par(leading: 0.65em)".to_owned(),
+        "#set enum(full: true, indent: 0pt, body-indent: 0.5em)".to_owned(),
+        "#set list(indent: 0pt, body-indent: 0.5em)".to_owned(),
     ];
 
     if let Some(colour) = body_colour {
@@ -61,6 +63,14 @@ pub fn compile_block(block: &Block, loop_vars: &[&str]) -> String {
 
 fn compile_table_block(block: &crate::model::TableBlock) -> String {
     let cols = block.rows.first().map(|r| r.cells.len()).unwrap_or(1);
+    let cols_spec = vec!["1fr"; cols].join(", ");
+    let header_rows = block.rows.iter().filter(|r| r.is_header).count();
+
+    let fill = if header_rows > 0 {
+        format!("  fill: (_, y) => if y < {} {{ luma(230) }} else {{ none }},\n", header_rows)
+    } else {
+        String::new()
+    };
 
     let rows: Vec<String> = block.rows.iter().map(|row| {
         let cells: Vec<String> = row.cells.iter().map(|cell| {
@@ -68,7 +78,11 @@ fn compile_table_block(block: &crate::model::TableBlock) -> String {
                 .map(|b| compile_pt_block(b, &[]))
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("[{content}]")
+            if row.is_header {
+                format!("[#strong[{content}]]")
+            } else {
+                format!("[{content}]")
+            }
         }).collect();
         if row.is_header {
             format!("  table.header({})", cells.join(", "))
@@ -77,7 +91,10 @@ fn compile_table_block(block: &crate::model::TableBlock) -> String {
         }
     }).collect();
 
-    format!("#table(\n  columns: {cols},\n{}\n)", rows.join(",\n"))
+    format!(
+        "#table(\n  columns: ({cols_spec}),\n{fill}  stroke: 0.5pt,\n{}\n)",
+        rows.join(",\n")
+    )
 }
 
 fn compile_text_block(block: &TextBlock, loop_vars: &[&str]) -> String {
@@ -375,7 +392,7 @@ mod tests {
     fn table_column_count() {
         let table = make_table(false, vec![vec!["A", "B", "C"], vec!["1", "2", "3"]]);
         let out = compile_table_block(&table);
-        assert!(out.contains("columns: 3"), "expected columns: 3, got:\n{out}");
+        assert!(out.contains("columns: (1fr, 1fr, 1fr)"), "expected fractional columns, got:\n{out}");
     }
 
     #[test]
@@ -384,6 +401,7 @@ mod tests {
         let out = compile_table_block(&table);
         assert!(out.contains("table.header("), "expected table.header(), got:\n{out}");
         assert!(out.contains("[Name]"), "expected [Name] cell, got:\n{out}");
+        assert!(out.contains("luma(230)"), "expected header fill, got:\n{out}");
     }
 
     #[test]

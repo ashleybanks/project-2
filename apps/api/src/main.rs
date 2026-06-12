@@ -1,5 +1,5 @@
 use axum::{
-    extract::Extension,
+    extract::{Extension, Query},
     http::{header, HeaderValue, Method},
     middleware,
     response::{IntoResponse, Json, Response},
@@ -91,6 +91,7 @@ async fn main() {
         .nest("/api/auth", auth::router(state.clone()))
         .route("/api/health", get(health))
         .route("/api/render/test", get(render_test))
+        .route("/api/fonts/css", get(font_css))
         .layer(
             CorsLayer::new()
                 .allow_origin(
@@ -156,4 +157,38 @@ async fn me(
         "email": user.email,
         "name":  user.name,
     }))
+}
+
+#[derive(serde::Deserialize)]
+struct FontCssQuery {
+    family: String,
+}
+
+/// Proxy Google Fonts CSS API. Server-side fetch gets TTF URLs (instead of
+/// woff2 that browsers receive), which Typst's font loader can actually parse.
+async fn font_css(Query(q): Query<FontCssQuery>) -> Response {
+    let url = format!(
+        "https://fonts.googleapis.com/css2?family={}&display=swap",
+        urlencoding::encode(&q.family)
+    );
+    match reqwest::get(&url).await {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.text().await {
+                Ok(css) => {
+                    let mut resp = axum::response::Response::new(axum::body::Body::from(css));
+                    resp.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("text/css"));
+                    resp.headers_mut().insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+                    resp
+                }
+                Err(e) => (
+                    axum::http::StatusCode::BAD_GATEWAY,
+                    Json(json!({ "error": e.to_string() })),
+                ).into_response(),
+            }
+        }
+        _ => (
+            axum::http::StatusCode::BAD_GATEWAY,
+            Json(json!({ "error": "failed to fetch font CSS" })),
+        ).into_response(),
+    }
 }

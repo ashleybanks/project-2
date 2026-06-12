@@ -21,10 +21,18 @@ pub enum RenderError {
 }
 
 pub fn render(source: &str, payload: &serde_json::Value) -> Result<Vec<u8>, RenderError> {
+    render_with_fonts(source, payload, &[])
+}
+
+pub fn render_with_fonts(
+    source: &str,
+    payload: &serde_json::Value,
+    extra_fonts: &[Vec<u8>],
+) -> Result<Vec<u8>, RenderError> {
     let payload_json = serde_json::to_string(payload)
         .map_err(|e| RenderError::Compile(e.to_string()))?;
 
-    let world = InMemoryWorld::new(source, &payload_json);
+    let world = InMemoryWorld::new(source, &payload_json, extra_fonts);
 
     let result = typst::compile::<PagedDocument>(&world);
     let document = result.output.map_err(|errs| {
@@ -51,7 +59,7 @@ struct InMemoryWorld {
 }
 
 impl InMemoryWorld {
-    fn new(source: &str, payload_json: &str) -> Self {
+    fn new(source: &str, payload_json: &str, extra_fonts: &[Vec<u8>]) -> Self {
         let main_id = FileId::new(None, VirtualPath::new("/main.typ"));
         let data_id = FileId::new(None, VirtualPath::new("/data.json"));
 
@@ -63,6 +71,13 @@ impl InMemoryWorld {
         let mut fonts = Vec::new();
         for data in typst_assets::fonts() {
             let font_bytes = Bytes::new(data.to_vec());
+            for font in Font::iter(font_bytes) {
+                book.push(font.info().clone());
+                fonts.push(font);
+            }
+        }
+        for data in extra_fonts {
+            let font_bytes = Bytes::new(data.clone());
             for font in Font::iter(font_bytes) {
                 book.push(font.info().clone());
                 fonts.push(font);

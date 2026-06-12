@@ -218,7 +218,7 @@ mod tests {
         let model = map_to_block_model(blocks);
         let source = crate::compile(&model, None);
         assert!(source.contains("#table("), "expected #table(, got:\n{source}");
-        assert!(source.contains("columns: 2"), "expected columns: 2, got:\n{source}");
+        assert!(source.contains("columns: (1fr, 1fr)"), "expected fractional columns, got:\n{source}");
         assert!(source.contains("table.header("), "expected table.header(), got:\n{source}");
         assert!(source.contains("[Alice]"), "expected [Alice] cell, got:\n{source}");
     }

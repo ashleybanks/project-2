@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "lib"]
 
 [features]
-wasm = ["wasm-bindgen"]
+wasm = ["wasm-bindgen", "js-sys"]
 
 [dependencies]
 typst = "0.14"
@@ -18,3 +18,4 @@ serde_json = "1"
 thiserror = "2"
 chrono = "0.4"
 wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }

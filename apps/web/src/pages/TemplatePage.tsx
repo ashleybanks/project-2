@@ -38,6 +38,14 @@ export default function TemplatePage() {
     setPanelCollapsed(next);
     localStorage.setItem(`rp-collapsed-${id}`, String(next));
   }
+
+  function handleModeChange(next: "build" | "preview" | "data") {
+    if (next === "preview" && !panelCollapsed) {
+      handlePanelCollapsedChange(true);
+    }
+    setMode(next);
+  }
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
 
@@ -112,54 +120,48 @@ export default function TemplatePage() {
         >
           ← Templates
         </button>
-        <Separator orientation="vertical" className="h-4" />
+        <Separator orientation="vertical" className="h-8" />
         <Input
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           className="border-none shadow-none text-sm font-medium p-0 h-auto focus-visible:ring-0 max-w-xs"
         />
-        <span className="text-xs text-muted-foreground ml-auto">
+        <span className="text-xs text-muted-foreground">
           {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
         </span>
+        <div className="ml-auto flex rounded-md border border-border shadow-sm overflow-hidden">
+          {(
+            [
+              { m: "build",   label: "Build",   Icon: PenLine,  enabled: true  },
+              { m: "preview", label: "Preview", Icon: Eye,      enabled: true  },
+              { m: "data",    label: "Data",    Icon: Database, enabled: false },
+            ] as const
+          ).map(({ m, label, Icon, enabled }, i) => (
+            <div key={m} className="flex items-stretch">
+              {i > 0 && <div className="w-px bg-border" />}
+              <button
+                onClick={() => enabled && handleModeChange(m)}
+                disabled={!enabled}
+                title={!enabled ? label : undefined}
+                className={`flex items-center gap-1.5 px-3 h-8 text-sm font-medium transition-colors ${
+                  mode === m
+                    ? "bg-primary text-primary-foreground"
+                    : !enabled
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{label}</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </header>
 
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <main className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto px-8 pt-6 pb-8"}`}>
-          {/* Floating mode toggle — top aligned with the formatting toolbar */}
-          {(() => {
-            const iconOnly = !panelCollapsed;
-            const items = [
-              { m: "build",   label: "Build",   Icon: PenLine,  enabled: true },
-              { m: "preview", label: "Preview", Icon: Eye,      enabled: true },
-              { m: "data",    label: "Data",    Icon: Database, enabled: false },
-            ] as const;
-            return (
-              <div className="absolute top-6 right-8 z-10 flex rounded-md border border-border bg-white shadow-sm overflow-hidden">
-                {items.map(({ m, label, Icon, enabled }, i) => (
-                  <div key={m} className="flex items-stretch">
-                    {i > 0 && <div className="w-px bg-border" />}
-                    <button
-                      onClick={() => enabled && setMode(m)}
-                      disabled={!enabled}
-                      title={(!enabled || iconOnly) ? label : undefined}
-                      className={`flex items-center gap-1.5 px-3 h-9 text-sm font-medium transition-colors ${
-                        mode === m
-                          ? "bg-primary text-primary-foreground"
-                          : !enabled
-                          ? "text-muted-foreground/40 cursor-not-allowed"
-                          : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      {!iconOnly && <span>{label}</span>}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
           {mode === "preview" ? (
             <PreviewPane blocks={blocks} stylesheet={stylesheet} />
           ) : (

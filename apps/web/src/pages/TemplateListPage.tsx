@@ -45,10 +45,10 @@ export default function TemplateListPage() {
             {templates.map((t, i) => (
               <div key={t.id}>
                 {i > 0 && <Separator />}
-                <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors">
+                <div className="flex items-center justify-between cursor-pointer px-4 py-3 hover:bg-muted/40 transition-colors">
                   <button
                     onClick={() => navigate(`/app/templates/${t.id}`)}
-                    className="flex-1 text-left"
+                    className="flex-1 text-left cursor-pointer"
                   >
                     <span className="text-base font-medium">{t.name}</span>
                     <span className="text-xs text-muted-foreground ml-3">
@@ -58,7 +58,7 @@ export default function TemplateListPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive cursor-pointer"
                     onClick={() => {
                       if (confirm(`Delete "${t.name}"?`)) deleteMut.mutate(t.id);
                     }}

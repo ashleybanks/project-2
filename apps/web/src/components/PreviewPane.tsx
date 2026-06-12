@@ -50,7 +50,7 @@ export default function PreviewPane({ blocks, stylesheet }: Props) {
   }, [blocks, stylesheet]);
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative bg-white">
       {state.status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <p className="text-sm text-muted-foreground bg-white/80 px-3 py-1.5 rounded shadow-sm">

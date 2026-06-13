@@ -1,7 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listVersions, createVersion, restoreVersion, updateTemplate } from "../lib/api";
-import type { StylesheetDef, TemplateDetail, VersionSummary, PtTopLevel } from "../lib/api";
+import {
+  listVersions,
+  createVersion,
+  restoreVersion,
+  updateTemplate,
+} from "../lib/api";
+import type {
+  StylesheetDef,
+  TemplateDetail,
+  VersionSummary,
+  PtTopLevel,
+} from "../lib/api";
 import { useEditor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +33,17 @@ interface Props {
   onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export default function RightPanel({ templateId, stylesheet, blocks, editorRef, onCreateCheckpoint, onRestore, onStylesheetChange, collapsed, onCollapsedChange }: Props) {
+export default function RightPanel({
+  templateId,
+  stylesheet,
+  blocks,
+  editorRef,
+  onCreateCheckpoint,
+  onRestore,
+  onStylesheetChange,
+  collapsed,
+  onCollapsedChange,
+}: Props) {
   const storageKey = `rp-tab-${templateId}`;
 
   const [tab, setTab] = useState<Tab>(() => {
@@ -68,7 +88,11 @@ export default function RightPanel({ templateId, stylesheet, blocks, editorRef, 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "map" ? "Doc Map" : t === "stylesheet" ? "Styles" : "History"}
+                {t === "map"
+                  ? "Doc Map"
+                  : t === "stylesheet"
+                    ? "Styles"
+                    : "History"}
               </button>
             ))}
             <button
@@ -82,7 +106,7 @@ export default function RightPanel({ templateId, stylesheet, blocks, editorRef, 
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
-            {tab === "map"        && <DocumentMapTab editorRef={editorRef} />}
+            {tab === "map" && <DocumentMapTab editorRef={editorRef} />}
             {tab === "stylesheet" && (
               <StylesheetTab
                 templateId={templateId}
@@ -91,7 +115,7 @@ export default function RightPanel({ templateId, stylesheet, blocks, editorRef, 
                 onStylesheetChange={onStylesheetChange}
               />
             )}
-            {tab === "history"    && (
+            {tab === "history" && (
               <HistoryTab
                 templateId={templateId}
                 onCreateCheckpoint={onCreateCheckpoint}
@@ -114,7 +138,11 @@ interface MapEntry {
   isIntent: boolean;
 }
 
-function DocumentMapTab({ editorRef }: { editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null> }) {
+function DocumentMapTab({
+  editorRef,
+}: {
+  editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+}) {
   const [entries, setEntries] = useState<MapEntry[]>([]);
   const [highlighted, setHighlighted] = useState<number | null>(null);
 
@@ -134,7 +162,8 @@ function DocumentMapTab({ editorRef }: { editorRef: React.MutableRefObject<Retur
             isIntent: false,
           });
         } else if (node.type.name === "section") {
-          const intent = (node.attrs.conditionIntent ?? node.attrs.repeatIntent) as string | null;
+          const intent = (node.attrs.conditionIntent ??
+            node.attrs.repeatIntent) as string | null;
           if (intent) {
             newEntries.push({
               label: `◈ ${intent.length > 30 ? intent.slice(0, 30) + "…" : intent}`,
@@ -225,7 +254,8 @@ function StylesheetTab({
   }, [stylesheet]);
 
   const saveMut = useMutation({
-    mutationFn: (s: StylesheetDef) => updateTemplate(templateId, { stylesheet: s }),
+    mutationFn: (s: StylesheetDef) =>
+      updateTemplate(templateId, { stylesheet: s }),
   });
 
   function handleChange(next: StylesheetDef) {
@@ -296,7 +326,10 @@ function HistoryTab({
       {/* Create checkpoint */}
       <div className="p-3 border-b border-border">
         {creatingCheckpoint ? (
-          <form onSubmit={handleCreateCheckpoint} className="flex flex-col gap-1.5">
+          <form
+            onSubmit={handleCreateCheckpoint}
+            className="flex flex-col gap-1.5"
+          >
             <Input
               autoFocus
               value={checkpointLabel}
@@ -305,16 +338,32 @@ function HistoryTab({
               className="h-8 text-sm"
             />
             <div className="flex gap-1">
-              <Button type="submit" size="sm" className="h-8 text-sm flex-1" disabled={savingCheckpoint || !checkpointLabel.trim()}>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-8 text-sm flex-1"
+                disabled={savingCheckpoint || !checkpointLabel.trim()}
+              >
                 {savingCheckpoint ? "Saving…" : "Save checkpoint"}
               </Button>
-              <Button type="button" size="sm" variant="ghost" className="h-8 text-sm" onClick={() => setCreatingCheckpoint(false)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-sm"
+                onClick={() => setCreatingCheckpoint(false)}
+              >
                 Cancel
               </Button>
             </div>
           </form>
         ) : (
-          <Button size="sm" variant="outline" className="w-full h-8 text-sm" onClick={() => setCreatingCheckpoint(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-8 text-sm"
+            onClick={() => setCreatingCheckpoint(true)}
+          >
             + Create checkpoint
           </Button>
         )}
@@ -326,7 +375,9 @@ function HistoryTab({
           <p className="p-4 text-sm text-muted-foreground">Loading history…</p>
         )}
         {!isLoading && (!versions || versions.length === 0) && (
-          <p className="p-4 text-sm text-muted-foreground">No history yet. Auto-saves appear here.</p>
+          <p className="p-4 text-sm text-muted-foreground">
+            No history yet. Auto-saves appear here.
+          </p>
         )}
         {versions?.map((v) => (
           <VersionRow
@@ -340,15 +391,30 @@ function HistoryTab({
   );
 }
 
-function VersionRow({ version, onRestore }: { version: VersionSummary; onRestore: () => void }) {
+function VersionRow({
+  version,
+  onRestore,
+}: {
+  version: VersionSummary;
+  onRestore: () => void;
+}) {
   const isCheckpoint = !!version.label;
   const date = new Date(version.created_at);
-  const dateStr = date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const dateStr = date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
-    <div className={`flex items-center justify-between px-3 py-2 border-b border-border/50 hover:bg-zinc-50 group ${isCheckpoint ? "bg-amber-50/40" : ""}`}>
+    <div
+      className={`flex items-center justify-between px-3 py-2 border-b border-border/50 hover:bg-zinc-50 group ${isCheckpoint ? "bg-amber-50/40" : ""}`}
+    >
       <div className="min-w-0">
-        <p className={`text-sm truncate ${isCheckpoint ? "font-semibold text-amber-800" : "text-muted-foreground"}`}>
+        <p
+          className={`text-sm truncate ${isCheckpoint ? "font-semibold text-amber-800" : "text-muted-foreground"}`}
+        >
           {isCheckpoint ? version.label : "Auto-save"}
         </p>
         <p className="text-xs text-muted-foreground/60">{dateStr}</p>

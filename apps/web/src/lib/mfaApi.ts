@@ -9,7 +9,10 @@ async function mfaFetch<T>(path: string, body?: object): Promise<T> {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error ?? res.statusText);
   }
-  if (res.status === 200 && res.headers.get("content-type")?.includes("application/json")) {
+  if (
+    res.status === 200 &&
+    res.headers.get("content-type")?.includes("application/json")
+  ) {
     return res.json();
   }
   return undefined as T;

@@ -12,7 +12,12 @@ export default function ProtectedRoute({ children }: Props) {
   if (isPending) return null;
 
   if (!session?.user) {
-    return <Navigate to={`/sign-in?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    return (
+      <Navigate
+        to={`/sign-in?redirect=${encodeURIComponent(location.pathname)}`}
+        replace
+      />
+    );
   }
 
   return <>{children}</>;

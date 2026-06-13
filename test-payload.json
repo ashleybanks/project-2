@@ -1,0 +1,44 @@
+{
+  "invoice_number": "INV-2026-0042",
+  "issue_date": "2026-06-01",
+  "due_date": "2026-06-30",
+  "status": "sent",
+  "client": {
+    "name": "Sarah Mitchell",
+    "email": "sarah.mitchell@acmecorp.com",
+    "company": "Acme Corporation Ltd",
+    "address": {
+      "line1": "14 Holborn Viaduct",
+      "city": "London",
+      "postcode": "EC1A 2BN",
+      "country": "United Kingdom"
+    }
+  },
+  "line_items": [
+    {
+      "description": "UX Strategy Workshop (2 days)",
+      "quantity": 2,
+      "unit_price": 1800.00,
+      "total": 3600.00
+    },
+    {
+      "description": "Wireframing & Prototype Design",
+      "quantity": 8,
+      "unit_price": 450.00,
+      "total": 3600.00
+    },
+    {
+      "description": "User Research Report",
+      "quantity": 1,
+      "unit_price": 950.00,
+      "total": 950.00
+    }
+  ],
+  "subtotal": 8150.00,
+  "tax_rate": 0.20,
+  "tax_amount": 1630.00,
+  "total_due": 9780.00,
+  "currency": "GBP",
+  "notes": "Payment by BACS to sort code 20-00-00, account 12345678. Please reference invoice number on transfer.",
+  "paid": false
+}

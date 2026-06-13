@@ -31,7 +31,9 @@ export default function VerifyEmailError() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Verification link expired</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Verification link expired
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             This link is no longer valid. Enter your email to get a new one.
           </p>
@@ -40,7 +42,8 @@ export default function VerifyEmailError() {
           <CardContent className="pt-6">
             {done ? (
               <p className="text-sm text-center text-muted-foreground">
-                If that email is registered and unverified, a new link is on its way.
+                If that email is registered and unverified, a new link is on its
+                way.
               </p>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -64,7 +67,10 @@ export default function VerifyEmailError() {
           </CardContent>
         </Card>
         <p className="text-center text-sm text-muted-foreground mt-6">
-          <Link to="/sign-in" className="text-primary hover:underline font-medium">
+          <Link
+            to="/sign-in"
+            className="text-primary hover:underline font-medium"
+          >
             Back to sign in
           </Link>
         </p>

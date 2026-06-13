@@ -1,16 +1,28 @@
-import type { PtTopLevel, PtBlock, PtSection, PtTable, PtTableCell } from "./api";
+import type {
+  PtTopLevel,
+  PtBlock,
+  PtSection,
+  PtTable,
+  PtTableCell,
+} from "./api";
 import type { StyleKey } from "./api";
 
 const STYLE_ORDER: StyleKey[] = [
   "normal",
-  "h1", "h2", "h3", "h4", "h5", "h6",
-  "tableHeader", "tableData",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "tableHeader",
+  "tableData",
 ];
 
 export function deriveVisibleStyles(blocks: PtTopLevel[]): StyleKey[] {
   const found = new Set<StyleKey>(["normal"]);
   collectStyles(blocks, found);
-  return STYLE_ORDER.filter(k => found.has(k));
+  return STYLE_ORDER.filter((k) => found.has(k));
 }
 
 function collectStyles(

@@ -74,6 +74,7 @@ pub struct FrontendSpan {
 #[derive(Debug, Deserialize)]
 pub struct FrontendFieldIntent {
     pub label: String,
+    pub field_path: Option<String>,
 }
 
 // ── Mapping ───────────────────────────────────────────────────────────────────
@@ -128,7 +129,14 @@ fn map_child(child: FrontendChild) -> Option<PtChild> {
             text: s.text,
             marks: s.marks,
         })),
-        FrontendChild::FieldIntent(_) => None,
+        FrontendChild::FieldIntent(fi) => {
+            if let Some(path) = fi.field_path {
+                Some(PtChild::MergeField(crate::model::PtMergeField { field: path }))
+            } else {
+                // Unresolved intent: render the label as plain text so it's visible
+                Some(PtChild::Span(PtSpan { text: fi.label, marks: vec![] }))
+            }
+        }
     }
 }
 
@@ -237,7 +245,24 @@ mod tests {
     }
 
     #[test]
-    fn field_intent_silently_dropped() {
+    fn field_intent_with_path_becomes_merge_field() {
+        let json = r#"[
+          {"_type":"block","_key":"k1","style":"normal","children":[
+            {"_type":"span","_key":"k2","text":"Number: ","marks":[]},
+            {"_type":"fieldIntent","_key":"k3","label":"Invoice Number","field_path":"invoice_number"},
+            {"_type":"span","_key":"k4","text":" end","marks":[]}
+          ]}
+        ]"#;
+        let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
+        let model = map_to_block_model(blocks);
+        let source = crate::compile(&model, None);
+        assert!(source.contains("Number: "), "got:\n{source}");
+        assert!(source.contains("#data.invoice_number"), "expected merge field, got:\n{source}");
+        assert!(source.contains(" end"), "got:\n{source}");
+    }
+
+    #[test]
+    fn field_intent_without_path_renders_label() {
         let json = r#"[
           {"_type":"block","_key":"k1","style":"normal","children":[
             {"_type":"span","_key":"k2","text":"Before","marks":[]},
@@ -250,6 +275,6 @@ mod tests {
         let source = crate::compile(&model, None);
         assert!(source.contains("Before"), "got:\n{source}");
         assert!(source.contains("After"), "got:\n{source}");
-        assert!(!source.contains("Invoice Number"), "intent label should be dropped, got:\n{source}");
+        assert!(source.contains("Invoice Number"), "unresolved intent should show label, got:\n{source}");
     }
 }

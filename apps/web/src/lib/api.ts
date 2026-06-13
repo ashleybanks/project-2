@@ -364,6 +364,54 @@ export const generateTestData = (templateId: string, count = 10) =>
     },
   );
 
+// ── Jobs / generate ───────────────────────────────────────────────────────────
+
+export interface JobStatus {
+  id: string;
+  status: "pending" | "processing" | "done" | "failed";
+  error_message: string | null;
+  download_url: string | null;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export type GenerateResult =
+  | { ok: true; job_id: string }
+  | { ok: false; errors: ValidationError[] };
+
+export async function generateDocument(
+  templateId: string,
+  payload: Record<string, unknown>,
+): Promise<GenerateResult> {
+  const res = await fetch(`/api/templates/${templateId}/generate`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payload }),
+  });
+
+  if (res.status === 422) {
+    const body = await res.json().catch(() => ({ errors: [] }));
+    return { ok: false, errors: body.errors ?? [] };
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error ?? res.statusText);
+  }
+
+  const body = await res.json();
+  return { ok: true, job_id: body.job_id };
+}
+
+export const getJob = (jobId: string) => apiFetch<JobStatus>(`/jobs/${jobId}`);
+
+export const getJobDownloadUrl = (jobId: string) =>
+  `/api/jobs/${jobId}/download`;
+
 export const importDocx = async (file: File): Promise<BlockModel> => {
   const form = new FormData();
   form.append("file", file);

@@ -12,7 +12,10 @@ import { Separator } from "@/components/ui/separator";
 type Step = "idle" | "setup" | "recovery-codes" | "disabling";
 
 export default function MfaSettingsPage() {
-  const { data: session, refetch } = useSession() as { data: { user?: { mfaEnabled?: boolean } } | null, refetch: () => void };
+  const { data: session, refetch } = useSession() as {
+    data: { user?: { mfaEnabled?: boolean } } | null;
+    refetch: () => void;
+  };
   const mfaEnabled = session?.user?.mfaEnabled ?? false;
 
   const [step, setStep] = useState<Step>("idle");
@@ -89,10 +92,10 @@ export default function MfaSettingsPage() {
   }
 
   const stepTitle: Record<Step, string> = {
-    "idle": "Two-factor authentication",
-    "setup": "Set up authenticator",
+    idle: "Two-factor authentication",
+    setup: "Set up authenticator",
     "recovery-codes": "Save your recovery codes",
-    "disabling": "Disable two-factor authentication",
+    disabling: "Disable two-factor authentication",
   };
 
   return (
@@ -113,29 +116,49 @@ export default function MfaSettingsPage() {
         {step === "recovery-codes" && (
           <div className="w-2/3 mx-auto py-8 px-4">
             <p className="text-sm text-muted-foreground mb-6">
-              These codes can be used to sign in if you lose access to your authenticator app.
-              Each code can only be used once. Store them somewhere safe.
+              These codes can be used to sign in if you lose access to your
+              authenticator app. Each code can only be used once. Store them
+              somewhere safe.
             </p>
             <Card className="mb-6">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                   {recoveryCodes.map((c) => (
-                    <div key={c} className="bg-muted rounded px-3 py-1.5 text-center tracking-widest">
+                    <div
+                      key={c}
+                      className="bg-muted rounded px-3 py-1.5 text-center tracking-widest"
+                    >
                       {c}
                     </div>
                   ))}
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={handleCopyAll} className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyAll}
+                    className="flex-1"
+                  >
                     {copied ? "Copied!" : "Copy all"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownload} className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownload}
+                    className="flex-1"
+                  >
                     Download
                   </Button>
                 </div>
               </CardContent>
             </Card>
-            <Button className="w-full" onClick={() => { setStep("idle"); refetch(); }}>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setStep("idle");
+                refetch();
+              }}
+            >
               Done — I've saved my codes
             </Button>
           </div>
@@ -145,8 +168,9 @@ export default function MfaSettingsPage() {
         {step === "setup" && (
           <div className="w-2/3 mx-auto py-8 px-4">
             <p className="text-sm text-muted-foreground mb-6">
-              Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.),
-              then enter the 6-digit code to confirm.
+              Scan the QR code with your authenticator app (Google
+              Authenticator, Authy, etc.), then enter the 6-digit code to
+              confirm.
             </p>
             <Card className="mb-6">
               <CardContent className="pt-6 flex flex-col items-center gap-4">
@@ -154,8 +178,12 @@ export default function MfaSettingsPage() {
                   <QRCode value={otpauthUri} size={180} />
                 </div>
                 <div className="w-full">
-                  <p className="text-xs text-muted-foreground mb-1">Or enter this key manually:</p>
-                  <p className="font-mono text-sm bg-muted rounded px-3 py-2 break-all select-all">{secret}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Or enter this key manually:
+                  </p>
+                  <p className="font-mono text-sm bg-muted rounded px-3 py-2 break-all select-all">
+                    {secret}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -175,7 +203,12 @@ export default function MfaSettingsPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Verifying…" : "Confirm code"}
               </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setStep("idle")}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setStep("idle")}
+              >
                 Cancel
               </Button>
             </form>
@@ -200,10 +233,24 @@ export default function MfaSettingsPage() {
                 required
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" variant="destructive" className="w-full" disabled={loading}>
+              <Button
+                type="submit"
+                variant="destructive"
+                className="w-full"
+                disabled={loading}
+              >
                 {loading ? "Disabling…" : "Disable MFA"}
               </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => { setStep("idle"); setCode(""); setError(""); }}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setStep("idle");
+                  setCode("");
+                  setError("");
+                }}
+              >
                 Cancel
               </Button>
             </form>
@@ -217,7 +264,9 @@ export default function MfaSettingsPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center justify-between">
                   Authenticator app
-                  <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${mfaEnabled ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
+                  <span
+                    className={`text-xs font-normal px-2 py-0.5 rounded-full ${mfaEnabled ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}
+                  >
                     {mfaEnabled ? "Enabled" : "Not enabled"}
                   </span>
                 </CardTitle>
@@ -226,19 +275,35 @@ export default function MfaSettingsPage() {
                 {mfaEnabled ? (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Your account is protected with an authenticator app. You'll be asked for a code each time you sign in.
+                      Your account is protected with an authenticator app.
+                      You'll be asked for a code each time you sign in.
                     </p>
-                    <Button variant="destructive" size="sm" onClick={() => { setError(""); setCode(""); setStep("disabling"); }}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setError("");
+                        setCode("");
+                        setStep("disabling");
+                      }}
+                    >
                       Disable MFA
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security by requiring a code from your authenticator app each time you sign in.
+                      Add an extra layer of security by requiring a code from
+                      your authenticator app each time you sign in.
                     </p>
-                    {error && <p className="text-sm text-destructive">{error}</p>}
-                    <Button size="sm" onClick={handleSetupStart} disabled={loading}>
+                    {error && (
+                      <p className="text-sm text-destructive">{error}</p>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleSetupStart}
+                      disabled={loading}
+                    >
                       {loading ? "Setting up…" : "Set up authenticator"}
                     </Button>
                   </div>

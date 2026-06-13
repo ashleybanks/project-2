@@ -11,7 +11,10 @@ async function accountFetch<T>(path: string, init?: RequestInit): Promise<T> {
       { code: body.error },
     );
   }
-  if (res.status === 200 && res.headers.get("content-type")?.includes("application/json")) {
+  if (
+    res.status === 200 &&
+    res.headers.get("content-type")?.includes("application/json")
+  ) {
     return res.json();
   }
   return undefined as T;

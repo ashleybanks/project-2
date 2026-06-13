@@ -30,23 +30,32 @@ export default function App() {
           <Route path="/verify-email/error" element={<VerifyEmailError />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/reset-password/error" element={<ResetPasswordError />} />
+          <Route
+            path="/reset-password/error"
+            element={<ResetPasswordError />}
+          />
           <Route
             path="/app/*"
             element={
               <ProtectedRoute>
-              <AppLayout>
-                <Routes>
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="templates" element={<TemplateListPage />} />
-                  <Route path="templates/new" element={<NewTemplatePage />} />
-                  <Route path="templates/:id" element={<TemplatePage />} />
-                  <Route path="stylesheets" element={<StylesheetsPage />} />
-                  <Route path="settings/account" element={<AccountSettingsPage />} />
-                  <Route path="settings/mfa" element={<MfaSettingsPage />} />
-                  <Route path="*" element={<Navigate to="/app/templates" replace />} />
-                </Routes>
-              </AppLayout>
+                <AppLayout>
+                  <Routes>
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="templates" element={<TemplateListPage />} />
+                    <Route path="templates/new" element={<NewTemplatePage />} />
+                    <Route path="templates/:id" element={<TemplatePage />} />
+                    <Route path="stylesheets" element={<StylesheetsPage />} />
+                    <Route
+                      path="settings/account"
+                      element={<AccountSettingsPage />}
+                    />
+                    <Route path="settings/mfa" element={<MfaSettingsPage />} />
+                    <Route
+                      path="*"
+                      element={<Navigate to="/app/templates" replace />}
+                    />
+                  </Routes>
+                </AppLayout>
               </ProtectedRoute>
             }
           />

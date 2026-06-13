@@ -1,9 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { StylesheetDef, StyleKey, ParagraphStyle, TextStyle, TableCellStyle } from "@/lib/api";
+import type {
+  StylesheetDef,
+  StyleKey,
+  ParagraphStyle,
+  TextStyle,
+  TableCellStyle,
+} from "@/lib/api";
 import { FONTS } from "@/lib/fonts";
 
 interface Props {
@@ -15,22 +27,39 @@ interface Props {
 
 type AccordionKey = "headings" | "text" | "tables";
 
-const HEADING_KEYS: Extract<StyleKey, "h1"|"h2"|"h3"|"h4"|"h5"|"h6">[] =
-  ["h1", "h2", "h3", "h4", "h5", "h6"];
+const HEADING_KEYS: Extract<
+  StyleKey,
+  "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+>[] = ["h1", "h2", "h3", "h4", "h5", "h6"];
 
 const HEADING_LABEL: Record<string, string> = {
-  h1: "H1", h2: "H2", h3: "H3", h4: "H4", h5: "H5", h6: "H6",
+  h1: "H1",
+  h2: "H2",
+  h3: "H3",
+  h4: "H4",
+  h5: "H5",
+  h6: "H6",
 };
 
-export default function StylesheetEditor({ value, onChange, visibleStyles, storageKey }: Props) {
-  const isVisible = (key: StyleKey) => !visibleStyles || visibleStyles.includes(key);
-  const visibleHeadings = HEADING_KEYS.filter(k => isVisible(k));
+export default function StylesheetEditor({
+  value,
+  onChange,
+  visibleStyles,
+  storageKey,
+}: Props) {
+  const isVisible = (key: StyleKey) =>
+    !visibleStyles || visibleStyles.includes(key);
+  const visibleHeadings = HEADING_KEYS.filter((k) => isVisible(k));
   const showTables = isVisible("tableHeader") || isVisible("tableData");
 
   const [open, setOpen] = useState<Record<AccordionKey, boolean>>(() => {
     if (storageKey) {
       const raw = localStorage.getItem(`sse-${storageKey}`);
-      if (raw) { try { return JSON.parse(raw); } catch {} }
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch {}
+      }
     }
     return { headings: true, text: false, tables: false };
   });
@@ -38,19 +67,33 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
   function toggleSection(key: AccordionKey) {
     const next = { ...open, [key]: !open[key] };
     setOpen(next);
-    if (storageKey) localStorage.setItem(`sse-${storageKey}`, JSON.stringify(next));
+    if (storageKey)
+      localStorage.setItem(`sse-${storageKey}`, JSON.stringify(next));
   }
 
-  function setGlobal<K extends keyof StylesheetDef>(key: K, val: StylesheetDef[K]) {
+  function setGlobal<K extends keyof StylesheetDef>(
+    key: K,
+    val: StylesheetDef[K],
+  ) {
     onChange({ ...value, [key]: val || undefined });
   }
 
-  function setStyleField(styleKey: StyleKey, field: string, val: number | string | undefined) {
-    const current = (value[styleKey] as Record<string, unknown> | undefined) ?? {};
+  function setStyleField(
+    styleKey: StyleKey,
+    field: string,
+    val: number | string | undefined,
+  ) {
+    const current =
+      (value[styleKey] as Record<string, unknown> | undefined) ?? {};
     const updated: Record<string, unknown> = { ...current, [field]: val };
     if (val === undefined || val === "") delete updated[field];
-    const hasValues = Object.values(updated).some(v => v !== undefined && v !== "");
-    onChange({ ...value, [styleKey]: hasValues ? updated as ParagraphStyle : undefined });
+    const hasValues = Object.values(updated).some(
+      (v) => v !== undefined && v !== "",
+    );
+    onChange({
+      ...value,
+      [styleKey]: hasValues ? (updated as ParagraphStyle) : undefined,
+    });
   }
 
   return (
@@ -59,25 +102,38 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
       {visibleHeadings.length > 0 && (
         <Card size="sm">
           <CardHeader
-            className={cn("cursor-pointer select-none", open.headings && "border-b border-border")}
+            className={cn(
+              "cursor-pointer select-none",
+              open.headings && "border-b border-border",
+            )}
             onClick={() => toggleSection("headings")}
           >
             <CardTitle>Heading styles</CardTitle>
             <CardAction>
-              {open.headings
-                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+              {open.headings ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
             </CardAction>
           </CardHeader>
           {open.headings && (
             <CardContent>
               <div className="space-y-3 w-2/3">
                 <div className="grid grid-cols-2 gap-4">
-                  <FontField label="Heading font" value={value.headingFont} onChange={v => setGlobal("headingFont", v || undefined)} />
-                  <ColourInput label="Heading colour" value={value.headingColour} onChange={v => setGlobal("headingColour", v)} />
+                  <FontField
+                    label="Heading font"
+                    value={value.headingFont}
+                    onChange={(v) => setGlobal("headingFont", v || undefined)}
+                  />
+                  <ColourInput
+                    label="Heading colour"
+                    value={value.headingColour}
+                    onChange={(v) => setGlobal("headingColour", v)}
+                  />
                 </div>
                 <div className="border-t border-border pt-3 space-y-3">
-                  {visibleHeadings.map(hk => (
+                  {visibleHeadings.map((hk) => (
                     <StyleEntry
                       key={hk}
                       label={HEADING_LABEL[hk]}
@@ -96,22 +152,35 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
       {/* Text styles */}
       <Card size="sm">
         <CardHeader
-          className={cn("cursor-pointer select-none", open.text && "border-b border-border")}
+          className={cn(
+            "cursor-pointer select-none",
+            open.text && "border-b border-border",
+          )}
           onClick={() => toggleSection("text")}
         >
           <CardTitle>Text styles</CardTitle>
           <CardAction>
-            {open.text
-              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            {open.text ? (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            )}
           </CardAction>
         </CardHeader>
         {open.text && (
           <CardContent>
             <div className="space-y-3 w-2/3">
               <div className="grid grid-cols-2 gap-4">
-                <FontField label="Body font" value={value.bodyFont} onChange={v => setGlobal("bodyFont", v || undefined)} />
-                <ColourInput label="Body colour" value={value.bodyColour} onChange={v => setGlobal("bodyColour", v)} />
+                <FontField
+                  label="Body font"
+                  value={value.bodyFont}
+                  onChange={(v) => setGlobal("bodyFont", v || undefined)}
+                />
+                <ColourInput
+                  label="Body colour"
+                  value={value.bodyColour}
+                  onChange={(v) => setGlobal("bodyColour", v)}
+                />
               </div>
               <div className="border-t border-border pt-3">
                 <StyleEntry
@@ -130,14 +199,19 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
       {showTables && (
         <Card size="sm">
           <CardHeader
-            className={cn("cursor-pointer select-none", open.tables && "border-b border-border")}
+            className={cn(
+              "cursor-pointer select-none",
+              open.tables && "border-b border-border",
+            )}
             onClick={() => toggleSection("tables")}
           >
             <CardTitle>Table styles</CardTitle>
             <CardAction>
-              {open.tables
-                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+              {open.tables ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
             </CardAction>
           </CardHeader>
           {open.tables && (
@@ -146,14 +220,18 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
                 {isVisible("tableHeader") && (
                   <TableStyleEntry
                     label="Header cells"
-                    style={(value.tableHeader as TableCellStyle | undefined) ?? {}}
+                    style={
+                      (value.tableHeader as TableCellStyle | undefined) ?? {}
+                    }
                     onChange={(f, v) => setStyleField("tableHeader", f, v)}
                   />
                 )}
                 {isVisible("tableData") && (
                   <TableStyleEntry
                     label="Data cells"
-                    style={(value.tableData as TableCellStyle | undefined) ?? {}}
+                    style={
+                      (value.tableData as TableCellStyle | undefined) ?? {}
+                    }
                     onChange={(f, v) => setStyleField("tableData", f, v)}
                   />
                 )}
@@ -169,7 +247,10 @@ export default function StylesheetEditor({ value, onChange, visibleStyles, stora
 // ── Style entry rows ───────────────────────────────────────────────────────────
 
 function StyleEntry({
-  label, style, extraFields, onChange,
+  label,
+  style,
+  extraFields,
+  onChange,
 }: {
   label: string;
   style: ParagraphStyle & { indentSize?: number };
@@ -179,12 +260,30 @@ function StyleEntry({
   return (
     <div>
       <Label className="text-base mb-3">{label}</Label>
-      <div className={`grid ${extraFields === "indent" ? "grid-cols-4" : "grid-cols-3"} gap-4`}>
-        <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
-        <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-        <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
+      <div
+        className={`grid ${extraFields === "indent" ? "grid-cols-4" : "grid-cols-3"} gap-4`}
+      >
+        <PtInput
+          label="Font size"
+          value={style.fontSize}
+          onChange={(v) => onChange("fontSize", v)}
+        />
+        <PtInput
+          label="Spacing before"
+          value={style.spacingBefore}
+          onChange={(v) => onChange("spacingBefore", v)}
+        />
+        <PtInput
+          label="Spacing after"
+          value={style.spacingAfter}
+          onChange={(v) => onChange("spacingAfter", v)}
+        />
         {extraFields === "indent" && (
-          <PtInput label="Indent" value={(style as TextStyle).indentSize} onChange={v => onChange("indentSize", v)} />
+          <PtInput
+            label="Indent"
+            value={(style as TextStyle).indentSize}
+            onChange={(v) => onChange("indentSize", v)}
+          />
         )}
       </div>
     </div>
@@ -192,7 +291,9 @@ function StyleEntry({
 }
 
 function TableStyleEntry({
-  label, style, onChange,
+  label,
+  style,
+  onChange,
 }: {
   label: string;
   style: TableCellStyle;
@@ -202,13 +303,33 @@ function TableStyleEntry({
     <div className="space-y-2">
       <Label className="text-base mb-3">{label}</Label>
       <div className="grid grid-cols-3 gap-4">
-        <PtInput label="Font size"      value={style.fontSize}      onChange={v => onChange("fontSize", v)} />
-        <PtInput label="Spacing before" value={style.spacingBefore} onChange={v => onChange("spacingBefore", v)} />
-        <PtInput label="Spacing after"  value={style.spacingAfter}  onChange={v => onChange("spacingAfter", v)} />
+        <PtInput
+          label="Font size"
+          value={style.fontSize}
+          onChange={(v) => onChange("fontSize", v)}
+        />
+        <PtInput
+          label="Spacing before"
+          value={style.spacingBefore}
+          onChange={(v) => onChange("spacingBefore", v)}
+        />
+        <PtInput
+          label="Spacing after"
+          value={style.spacingAfter}
+          onChange={(v) => onChange("spacingAfter", v)}
+        />
       </div>
       <div className="grid grid-cols-2 gap-2 items-end">
-        <PtInput label="Line width" value={style.lineWidth} onChange={v => onChange("lineWidth", v)} />
-        <ColourInput label="Line colour" value={style.lineColour} onChange={v => onChange("lineColour", v)} />
+        <PtInput
+          label="Line width"
+          value={style.lineWidth}
+          onChange={(v) => onChange("lineWidth", v)}
+        />
+        <ColourInput
+          label="Line colour"
+          value={style.lineColour}
+          onChange={(v) => onChange("lineColour", v)}
+        />
       </div>
     </div>
   );
@@ -217,7 +338,10 @@ function TableStyleEntry({
 // ── Shared field primitives (also used by StylesheetEditorCompact) ─────────────
 
 export function FontField({
-  label, value, onChange, labelClassName = "",
+  label,
+  value,
+  onChange,
+  labelClassName = "",
 }: {
   label: string;
   value?: string;
@@ -225,24 +349,31 @@ export function FontField({
   labelClassName?: string;
 }) {
   const groups = [
-    { group: "Sans-serif", fonts: FONTS.filter(f => f.group === "Sans-serif") },
-    { group: "Serif",      fonts: FONTS.filter(f => f.group === "Serif") },
-    { group: "Special",    fonts: FONTS.filter(f => f.group === "Special") },
+    {
+      group: "Sans-serif",
+      fonts: FONTS.filter((f) => f.group === "Sans-serif"),
+    },
+    { group: "Serif", fonts: FONTS.filter((f) => f.group === "Serif") },
+    { group: "Special", fonts: FONTS.filter((f) => f.group === "Special") },
   ];
 
   return (
     <div className="space-y-1">
-      <Label className={`text-muted-foreground ${labelClassName}`}>{label}</Label>
+      <Label className={`text-muted-foreground ${labelClassName}`}>
+        {label}
+      </Label>
       <select
         className="w-full h-8 text-sm rounded-md border border-input bg-background px-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         value={value || ""}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
       >
         <option value="">— None —</option>
         {groups.map(({ group, fonts }) => (
           <optgroup key={group} label={group}>
-            {fonts.map(f => (
-              <option key={f.value} value={f.value}>{f.label}</option>
+            {fonts.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
             ))}
           </optgroup>
         ))}
@@ -252,7 +383,10 @@ export function FontField({
 }
 
 export function ColourInput({
-  label, value, onChange, labelClassName = "",
+  label,
+  value,
+  onChange,
+  labelClassName = "",
 }: {
   label: string;
   value?: string;
@@ -266,10 +400,14 @@ export function ColourInput({
     setHex(value?.replace("#", "") ?? "");
   }, [value]);
 
-  const swatchColour = value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#e5e7eb";
+  const swatchColour =
+    value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#e5e7eb";
 
   function handleText(raw: string) {
-    const clean = raw.replace(/[^0-9a-fA-F]/gi, "").slice(0, 6).toUpperCase();
+    const clean = raw
+      .replace(/[^0-9a-fA-F]/gi, "")
+      .slice(0, 6)
+      .toUpperCase();
     setHex(clean);
     if (clean.length === 6) onChange("#" + clean);
     else if (clean.length === 0) onChange(undefined);
@@ -277,7 +415,9 @@ export function ColourInput({
 
   return (
     <div className="space-y-1">
-      <Label className={`text-muted-foreground ${labelClassName}`}>{label}</Label>
+      <Label className={`text-muted-foreground ${labelClassName}`}>
+        {label}
+      </Label>
       <div className="flex h-8 rounded-md border border-input overflow-hidden bg-background">
         <button
           type="button"
@@ -286,16 +426,21 @@ export function ColourInput({
           onClick={() => pickerRef.current?.click()}
           title="Pick colour"
         />
-        <input ref={pickerRef} type="color" className="sr-only"
+        <input
+          ref={pickerRef}
+          type="color"
+          className="sr-only"
           value={swatchColour}
-          onChange={e => { onChange(e.target.value); }}
+          onChange={(e) => {
+            onChange(e.target.value);
+          }}
         />
         <input
           type="text"
           className="flex-1 h-full px-2 text-xs bg-transparent focus:outline-none font-mono uppercase tracking-wider"
           placeholder="—"
           value={hex}
-          onChange={e => handleText(e.target.value)}
+          onChange={(e) => handleText(e.target.value)}
         />
       </div>
     </div>
@@ -303,7 +448,10 @@ export function ColourInput({
 }
 
 export function PtInput({
-  label, value, onChange, labelClassName = "",
+  label,
+  value,
+  onChange,
+  labelClassName = "",
 }: {
   label: string;
   value?: number;
@@ -312,14 +460,18 @@ export function PtInput({
 }) {
   return (
     <div>
-      <Label className={`text-muted-foreground mb-0.5 ${labelClassName}`}>{label} (pt)</Label>
+      <Label className={`text-muted-foreground mb-0.5 ${labelClassName}`}>
+        {label} (pt)
+      </Label>
       <input
         type="number"
         min={0}
         step={0.5}
         className="w-full h-7 text-xs px-1.5 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         value={value ?? ""}
-        onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
+        onChange={(e) =>
+          onChange(e.target.value ? Number(e.target.value) : undefined)
+        }
       />
     </div>
   );

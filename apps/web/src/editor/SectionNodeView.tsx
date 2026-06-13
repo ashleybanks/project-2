@@ -1,4 +1,8 @@
-import { NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";
+import {
+  NodeViewWrapper,
+  NodeViewContent,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
 import { Node as PmNode } from "@tiptap/pm/model";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -9,7 +13,10 @@ interface SectionNodeViewProps {
   updateAttributes: (attrs: Record<string, unknown>) => void;
 }
 
-export function SectionNodeViewComponent({ node, updateAttributes }: SectionNodeViewProps) {
+export function SectionNodeViewComponent({
+  node,
+  updateAttributes,
+}: SectionNodeViewProps) {
   const { conditionIntent, repeatIntent } = node.attrs as {
     conditionIntent: string | null;
     repeatIntent: string | null;
@@ -53,7 +60,8 @@ export function SectionNodeViewComponent({ node, updateAttributes }: SectionNode
             onClick={startEdit}
             title="Edit intent"
           >
-            ◈ {intent && intent.length > 40 ? intent.slice(0, 40) + "…" : intent}
+            ◈{" "}
+            {intent && intent.length > 40 ? intent.slice(0, 40) + "…" : intent}
           </button>
         </div>
       )}
@@ -71,11 +79,25 @@ export function SectionNodeViewComponent({ node, updateAttributes }: SectionNode
             className="h-7 text-xs"
             placeholder="Describe intent…"
           />
-          <Button type="submit" size="sm" className="h-7 text-xs px-2">Save</Button>
-          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={clearIntent}>
+          <Button type="submit" size="sm" className="h-7 text-xs px-2">
+            Save
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs px-2"
+            onClick={clearIntent}
+          >
             Remove
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditing(false)}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs px-2"
+            onClick={() => setEditing(false)}
+          >
             Cancel
           </Button>
         </form>
@@ -86,4 +108,6 @@ export function SectionNodeViewComponent({ node, updateAttributes }: SectionNode
   );
 }
 
-export const sectionNodeViewRenderer = ReactNodeViewRenderer(SectionNodeViewComponent);
+export const sectionNodeViewRenderer = ReactNodeViewRenderer(
+  SectionNodeViewComponent,
+);

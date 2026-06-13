@@ -39,8 +39,9 @@ export default function StylesheetsPage() {
         </span>
       </div>
       <p className="text-sm mb-8">
-        Brand rules are your workspace defaults. New templates start with a complete copy of
-        these settings. Changes here don't affect templates you've already created.
+        Brand rules are your workspace defaults. New templates start with a
+        complete copy of these settings. Changes here don't affect templates
+        you've already created.
       </p>
 
       {isLoading ? (

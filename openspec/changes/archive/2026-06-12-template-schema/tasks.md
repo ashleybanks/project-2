@@ -14,7 +14,7 @@
 - [x] API: `POST /api/templates/{id}/schema/resolve` — trigger resolution (all-in-one or selective via `intent_key` body param); `202 Accepted`
 - [x] Conflict detection: post-resolution check for duplicate `field_path`; flag both as `confidence: low`
 - [x] API: `POST /api/templates/{id}/schema/test-data` — generate N records from raw schema using faker library
-- [ ] Auto-trigger selective resolution when a new intent is added or an intent label is changed on save
+- [x] Auto-trigger selective resolution when a new intent is added or an intent label is changed on save
 
 ## Frontend — Data tab
 

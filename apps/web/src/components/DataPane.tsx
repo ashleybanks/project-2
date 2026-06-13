@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getSchema,
@@ -41,10 +42,12 @@ function ConfidenceDots({ confidence }: { confidence: MappingConfidence }) {
 
 function FieldPicker({
   schema,
+  anchorRect,
   onSelect,
   onClose,
 }: {
   schema: Record<string, unknown>;
+  anchorRect: DOMRect;
   onSelect: (path: string) => void;
   onClose: () => void;
 }) {
@@ -56,10 +59,21 @@ function FieldPicker({
     ? paths.filter((p) => p.toLowerCase().includes(search.toLowerCase()))
     : paths;
 
-  return (
+  const style: React.CSSProperties = {
+    position: "fixed",
+    top: anchorRect.bottom + 4,
+    left: anchorRect.left,
+    width: 256,
+    zIndex: 9999,
+  };
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border border-border bg-white shadow-lg p-2">
+      <div className="fixed inset-0 z-[9998]" onClick={onClose} />
+      <div
+        className="rounded-lg border border-border bg-white shadow-lg p-2"
+        style={style}
+      >
         <Input
           autoFocus
           value={search}
@@ -117,7 +131,8 @@ function FieldPicker({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
 
@@ -165,7 +180,8 @@ function MappingRow({
 }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const pickerButtonRef = useRef<HTMLButtonElement>(null);
 
   const patchMut = useMutation({
     mutationFn: (path: string) =>
@@ -231,9 +247,18 @@ function MappingRow({
 
         {/* Fix / Change */}
         {(isUnresolved || isLow) && (
-          <div className="relative">
+          <div>
             <button
-              onClick={() => setShowPicker(!showPicker)}
+              ref={pickerButtonRef}
+              onClick={() => {
+                if (pickerAnchor) {
+                  setPickerAnchor(null);
+                } else {
+                  setPickerAnchor(
+                    pickerButtonRef.current?.getBoundingClientRect() ?? null,
+                  );
+                }
+              }}
               className={`flex items-center gap-0.5 text-xs px-2 py-0.5 rounded border transition-colors ${
                 isUnresolved
                   ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
@@ -243,11 +268,12 @@ function MappingRow({
               {isUnresolved ? "Fix" : "Change"}
               <ChevronDown className="w-3 h-3" />
             </button>
-            {showPicker && (
+            {pickerAnchor && (
               <FieldPicker
                 schema={schema}
+                anchorRect={pickerAnchor}
                 onSelect={(path) => patchMut.mutate(path)}
-                onClose={() => setShowPicker(false)}
+                onClose={() => setPickerAnchor(null)}
               />
             )}
           </div>

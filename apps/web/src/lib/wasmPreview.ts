@@ -30,7 +30,9 @@ function isKnownFont(family: string): boolean {
 async function fetchFontTtfUrls(family: string): Promise<string[]> {
   // Request regular, bold, and italic variants
   const familyParam = `${family}:ital,wght@0,400;0,700;1,400`;
-  const resp = await fetch(`/api/fonts/css?family=${encodeURIComponent(familyParam)}`);
+  const resp = await fetch(
+    `/api/fonts/css?family=${encodeURIComponent(familyParam)}`,
+  );
   if (!resp.ok) return [];
   const css = await resp.text();
   // Extract all TTF/OTF URLs from src: url(...) declarations
@@ -69,17 +71,14 @@ async function fetchFontFamily(family: string): Promise<ArrayBuffer[]> {
   );
 
   const data = results.filter((b): b is ArrayBuffer => b !== null);
-  console.log(`[typst-preview] ${family}: loaded ${data.length} font file(s) as TTF`);
+  console.log(
+    `[typst-preview] ${family}: loaded ${data.length} font file(s) as TTF`,
+  );
   fontBytesCache.set(family, data);
   return data;
 }
 
-export async function renderPreview(
-  blocks: PtTopLevel[],
-  stylesheet: StylesheetDef,
-): Promise<Uint8Array> {
-  const wasm = await getModule();
-
+async function resolveFonts(stylesheet: StylesheetDef): Promise<Uint8Array[]> {
   const families = new Set<string>();
   if (stylesheet.bodyFont) families.add(stylesheet.bodyFont);
   if (stylesheet.headingFont) families.add(stylesheet.headingFont);
@@ -89,7 +88,33 @@ export async function renderPreview(
     const data = await fetchFontFamily(family);
     allFontData.push(...data);
   }
+  return allFontData.map((b) => new Uint8Array(b));
+}
 
-  const fontArrays = allFontData.map((b) => new Uint8Array(b));
-  return wasm.render_preview(JSON.stringify(blocks), JSON.stringify(stylesheet), fontArrays);
+export async function renderPreview(
+  blocks: PtTopLevel[],
+  stylesheet: StylesheetDef,
+): Promise<Uint8Array> {
+  const wasm = await getModule();
+  const fontArrays = await resolveFonts(stylesheet);
+  return wasm.render_preview(
+    JSON.stringify(blocks),
+    JSON.stringify(stylesheet),
+    fontArrays,
+  );
+}
+
+export async function renderPreviewWithData(
+  blocks: PtTopLevel[],
+  stylesheet: StylesheetDef,
+  payload: object,
+): Promise<Uint8Array> {
+  const wasm = await getModule();
+  const fontArrays = await resolveFonts(stylesheet);
+  return wasm.render_preview_with_data(
+    JSON.stringify(blocks),
+    JSON.stringify(stylesheet),
+    JSON.stringify(payload),
+    fontArrays,
+  );
 }

@@ -26,29 +26,29 @@ The analogy is Figma vs Photoshop: Figma didn't beat Photoshop by having more fe
 The brand primary is **indigo**. It reads as intelligent and trustworthy without the cold formality of DocuSign navy, and without the corporate genericness of blue. It's associated with the generation of professional tools (Linear, Superhuman) that feel considered rather than enterprise-issued.
 
 ```css
---primary:            oklch(0.499 0.190 265);   /* indigo ~#5046c8 */
+--primary: oklch(0.499 0.19 265); /* indigo ~#5046c8 */
 --primary-foreground: oklch(1 0 0);
---ring:               oklch(0.499 0.190 265);
+--ring: oklch(0.499 0.19 265);
 ```
 
 ### Semantic tokens (all surfaces)
 
 Use these in all components. Never reach for raw Tailwind color classes like `zinc-100` or `gray-500` — they break if the theme changes.
 
-| Token | CSS variable | Light value | Use for |
-|-------|-------------|-------------|---------|
-| `bg-background` | `--background` | zinc-50 `#fafafa` | Page background |
-| `bg-card` | `--card` | white | Card, panel, popover surfaces |
-| `text-foreground` | `--foreground` | zinc-900 | Primary text |
-| `text-muted-foreground` | `--muted-foreground` | zinc-500 | Secondary text, labels, placeholders |
-| `bg-muted` | `--muted` | zinc-100 | Subtle backgrounds, hover states |
-| `bg-secondary` | `--secondary` | zinc-100 | Secondary button fill |
-| `border-border` | `--border` | zinc-200 | All borders and dividers |
-| `border-input` | `--input` | zinc-200 | Form input borders |
-| `bg-primary` | `--primary` | indigo | Primary actions, active states |
-| `text-primary` | `--primary` | indigo | Links, active tab indicators |
-| `ring-ring` | `--ring` | indigo | Focus rings |
-| `text-destructive` | `--destructive` | red | Errors, danger actions |
+| Token                   | CSS variable         | Light value       | Use for                              |
+| ----------------------- | -------------------- | ----------------- | ------------------------------------ |
+| `bg-background`         | `--background`       | zinc-50 `#fafafa` | Page background                      |
+| `bg-card`               | `--card`             | white             | Card, panel, popover surfaces        |
+| `text-foreground`       | `--foreground`       | zinc-900          | Primary text                         |
+| `text-muted-foreground` | `--muted-foreground` | zinc-500          | Secondary text, labels, placeholders |
+| `bg-muted`              | `--muted`            | zinc-100          | Subtle backgrounds, hover states     |
+| `bg-secondary`          | `--secondary`        | zinc-100          | Secondary button fill                |
+| `border-border`         | `--border`           | zinc-200          | All borders and dividers             |
+| `border-input`          | `--input`            | zinc-200          | Form input borders                   |
+| `bg-primary`            | `--primary`          | indigo            | Primary actions, active states       |
+| `text-primary`          | `--primary`          | indigo            | Links, active tab indicators         |
+| `ring-ring`             | `--ring`             | indigo            | Focus rings                          |
+| `text-destructive`      | `--destructive`      | red               | Errors, danger actions               |
 
 ### What not to do
 
@@ -72,26 +72,26 @@ Use these in all components. Never reach for raw Tailwind color classes like `zi
 
 All sizes sit on an 8px grid. Line-heights are intentionally generous to support the "breathing room" principle.
 
-| Class | Size | Line-height | Use for |
-|-------|------|-------------|---------|
-| `text-xs` | 12px | 16px | Timestamps, captions, meta only |
-| `text-sm` | 14px | 20px | Secondary labels, helper text |
-| `text-base` | 16px | 24px | Body default |
-| `text-lg` | 18px | 28px | Slightly emphasised body |
-| `text-xl` | 20px | 32px | Section headings (small) |
-| `text-2xl` | 24px | 32px | Page section headings |
-| `text-3xl` | 30px | 40px | Page titles |
-| `text-4xl` | 36px | 48px | Hero/marketing headings |
-| `text-5xl` | 48px | 56px | Reserved for large display |
+| Class       | Size | Line-height | Use for                         |
+| ----------- | ---- | ----------- | ------------------------------- |
+| `text-xs`   | 12px | 16px        | Timestamps, captions, meta only |
+| `text-sm`   | 14px | 20px        | Secondary labels, helper text   |
+| `text-base` | 16px | 24px        | Body default                    |
+| `text-lg`   | 18px | 28px        | Slightly emphasised body        |
+| `text-xl`   | 20px | 32px        | Section headings (small)        |
+| `text-2xl`  | 24px | 32px        | Page section headings           |
+| `text-3xl`  | 30px | 40px        | Page titles                     |
+| `text-4xl`  | 36px | 48px        | Hero/marketing headings         |
+| `text-5xl`  | 48px | 56px        | Reserved for large display      |
 
 ### Weights
 
-| Weight | Class | Use for |
-|--------|-------|---------|
-| 400 | `font-normal` | Body text, labels |
-| 500 | `font-medium` | Slightly emphasised UI labels, button text |
-| 600 | `font-semibold` | Headings, section titles |
-| 700+ | Avoid | Too heavy for this UI character |
+| Weight | Class           | Use for                                    |
+| ------ | --------------- | ------------------------------------------ |
+| 400    | `font-normal`   | Body text, labels                          |
+| 500    | `font-medium`   | Slightly emphasised UI labels, button text |
+| 600    | `font-semibold` | Headings, section titles                   |
+| 700+   | Avoid           | Too heavy for this UI character            |
 
 ### Rules
 
@@ -108,16 +108,16 @@ Base unit: **8px**. All spacing decisions should be multiples of 4px (half-unit)
 
 ### Common spacing values
 
-| Class | Value | Use for |
-|-------|-------|---------|
-| `gap-1` / `p-1` | 4px | Tight icon spacing, within-badge padding |
-| `gap-1.5` / `p-1.5` | 6px | Small button vertical padding |
-| `gap-2` / `p-2` | 8px | Default spacing within components |
-| `gap-3` / `p-3` | 12px | Compact section padding |
-| `gap-4` / `p-4` | 16px | Standard section padding, card content |
-| `gap-6` / `p-6` | 24px | Generous section padding |
-| `gap-8` / `p-8` | 32px | Page-level horizontal padding |
-| `py-10` | 40px | Page-level vertical padding |
+| Class               | Value | Use for                                  |
+| ------------------- | ----- | ---------------------------------------- |
+| `gap-1` / `p-1`     | 4px   | Tight icon spacing, within-badge padding |
+| `gap-1.5` / `p-1.5` | 6px   | Small button vertical padding            |
+| `gap-2` / `p-2`     | 8px   | Default spacing within components        |
+| `gap-3` / `p-3`     | 12px  | Compact section padding                  |
+| `gap-4` / `p-4`     | 16px  | Standard section padding, card content   |
+| `gap-6` / `p-6`     | 24px  | Generous section padding                 |
+| `gap-8` / `p-8`     | 32px  | Page-level horizontal padding            |
+| `py-10`             | 40px  | Page-level vertical padding              |
 
 ### Page container
 
@@ -128,11 +128,11 @@ Base unit: **8px**. All spacing decisions should be multiples of 4px (half-unit)
 
 ### Sidebar / panel widths
 
-| Element | Width class | Value |
-|---------|------------|-------|
-| Right panel (expanded) | `w-72` | 288px |
-| Right panel (collapsed) | `w-10` | 40px |
-| Dropdown menus | `w-52` | 208px |
+| Element                 | Width class | Value |
+| ----------------------- | ----------- | ----- |
+| Right panel (expanded)  | `w-72`      | 288px |
+| Right panel (collapsed) | `w-10`      | 40px  |
+| Dropdown menus          | `w-52`      | 208px |
 
 ---
 
@@ -140,12 +140,12 @@ Base unit: **8px**. All spacing decisions should be multiples of 4px (half-unit)
 
 One radius variable scales everything. The base is `--radius: 0.5rem` (8px).
 
-| Token | Tailwind class | Value | Use for |
-|-------|---------------|-------|---------|
-| `--radius-sm` | `rounded-sm` | 2px | Badges, small chips |
-| `--radius-md` | `rounded-md` | 4px | Inputs, buttons |
-| `--radius-lg` | `rounded-lg` | 6px | Cards, panels (default surface) |
-| `--radius-xl` | `rounded-xl` | 8px | Modals, command palette |
+| Token         | Tailwind class | Value | Use for                         |
+| ------------- | -------------- | ----- | ------------------------------- |
+| `--radius-sm` | `rounded-sm`   | 2px   | Badges, small chips             |
+| `--radius-md` | `rounded-md`   | 4px   | Inputs, buttons                 |
+| `--radius-lg` | `rounded-lg`   | 6px   | Cards, panels (default surface) |
+| `--radius-xl` | `rounded-xl`   | 8px   | Modals, command palette         |
 
 Default to `rounded-lg` for most surfaces. Use `rounded-xl` only for elevated/floating surfaces (modals, command palette).
 
@@ -155,12 +155,12 @@ Default to `rounded-lg` for most surfaces. Use `rounded-xl` only for elevated/fl
 
 Tessia uses minimal shadow. Elevation is communicated primarily through **border** and **background colour contrast**, not drop shadows.
 
-| Situation | Approach |
-|-----------|----------|
-| Card on page background | `bg-card border border-border rounded-lg` |
-| Popover / dropdown | `bg-card border border-border rounded-lg shadow-md` |
-| Modal / dialog | `bg-card border border-border rounded-xl shadow-lg` |
-| Hover lift effect | Avoid — prefer background colour change instead |
+| Situation               | Approach                                            |
+| ----------------------- | --------------------------------------------------- |
+| Card on page background | `bg-card border border-border rounded-lg`           |
+| Popover / dropdown      | `bg-card border border-border rounded-lg shadow-md` |
+| Modal / dialog          | `bg-card border border-border rounded-xl shadow-lg` |
+| Hover lift effect       | Avoid — prefer background colour change instead     |
 
 ---
 
@@ -168,12 +168,12 @@ Tessia uses minimal shadow. Elevation is communicated primarily through **border
 
 `tw-animate-css` is imported. Use sparingly. Motion should aid comprehension (reveal, collapse, transition between states), not decorate.
 
-| Use case | Approach |
-|----------|----------|
-| Panel open/close | Slide + fade, `duration-200` |
-| Dropdown appear | Fade + scale from origin, `duration-150` |
-| Page transition | Fade only, `duration-200` |
-| Loading states | Pulse/skeleton only — no spinners unless async wait >1s |
+| Use case         | Approach                                                |
+| ---------------- | ------------------------------------------------------- |
+| Panel open/close | Slide + fade, `duration-200`                            |
+| Dropdown appear  | Fade + scale from origin, `duration-150`                |
+| Page transition  | Fade only, `duration-200`                               |
+| Loading states   | Pulse/skeleton only — no spinners unless async wait >1s |
 
 Default easing: `ease-out` for entrances, `ease-in` for exits.
 
@@ -185,16 +185,17 @@ Default easing: `ease-out` for entrances, `ease-in` for exits.
 
 Built with CVA via `button.tsx`. Variants:
 
-| Variant | Use for |
-|---------|---------|
-| `default` | Primary action (filled indigo) |
-| `secondary` | Secondary action (filled zinc-100) |
-| `outline` | Tertiary action, less emphasis |
-| `ghost` | Icon buttons, toolbar actions, minimal emphasis |
-| `destructive` | Irreversible or dangerous actions only |
-| `link` | Inline text links |
+| Variant       | Use for                                         |
+| ------------- | ----------------------------------------------- |
+| `default`     | Primary action (filled indigo)                  |
+| `secondary`   | Secondary action (filled zinc-100)              |
+| `outline`     | Tertiary action, less emphasis                  |
+| `ghost`       | Icon buttons, toolbar actions, minimal emphasis |
+| `destructive` | Irreversible or dangerous actions only          |
+| `link`        | Inline text links                               |
 
 **Rules:**
+
 - One primary (`default`) button per view region. Use `secondary` or `ghost` for everything else.
 - Button text: sentence case, verb-first ("Save changes", not "Changes saved")
 - Icon buttons: always pair with a tooltip; use `size="icon"` variant
@@ -219,6 +220,7 @@ Use `bg-card border border-border rounded-lg` as the base surface. `CardHeader` 
 ### Tabs
 
 Two variants in `tabs.tsx`:
+
 - `default`: pill-style — use for top-level view switching
 - `line`: underline-style — use for secondary tab groups within a panel
 
@@ -281,17 +283,17 @@ Every list or table needs an empty state. Keep it minimal: icon (optional), head
 
 ## What to Avoid
 
-| Don't | Do instead |
-|-------|-----------|
-| Raw zinc/gray color classes (`text-zinc-500`) | Use semantic tokens (`text-muted-foreground`) |
-| Multiple primary actions on one screen | One `default` button, rest secondary/ghost |
-| Deeply nested shadows and gradients | Flat surfaces with border + background contrast |
-| Two different typefaces | Figtree only |
-| Italic or uppercase in UI chrome | Reserve for document content or specific emphasis |
-| Pixel font sizes | Use the defined type scale |
-| Animations that loop or persist | Motion only for state transitions |
-| Placeholder-only form fields | Always use a visible label |
-| Custom one-off colors | Define a new CSS variable if genuinely needed |
+| Don't                                         | Do instead                                        |
+| --------------------------------------------- | ------------------------------------------------- |
+| Raw zinc/gray color classes (`text-zinc-500`) | Use semantic tokens (`text-muted-foreground`)     |
+| Multiple primary actions on one screen        | One `default` button, rest secondary/ghost        |
+| Deeply nested shadows and gradients           | Flat surfaces with border + background contrast   |
+| Two different typefaces                       | Figtree only                                      |
+| Italic or uppercase in UI chrome              | Reserve for document content or specific emphasis |
+| Pixel font sizes                              | Use the defined type scale                        |
+| Animations that loop or persist               | Motion only for state transitions                 |
+| Placeholder-only form fields                  | Always use a visible label                        |
+| Custom one-off colors                         | Define a new CSS variable if genuinely needed     |
 
 ---
 

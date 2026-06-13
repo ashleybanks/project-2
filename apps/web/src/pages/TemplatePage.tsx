@@ -19,10 +19,12 @@ import BlockCanvas from "../components/BlockCanvas";
 import PreviewPane from "../components/PreviewPane";
 import RightPanel from "../components/RightPanel";
 import DataPane from "../components/DataPane";
+import GenerateSheet from "../components/GenerateSheet";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@tiptap/react";
-import { PenLine, Eye, Database } from "lucide-react";
+import { PenLine, Eye, Database, FileDown } from "lucide-react";
 
 function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
   const result = new Map<string, string>();
@@ -82,6 +84,7 @@ export default function TemplatePage() {
   );
   const [canvasKey, setCanvasKey] = useState(0);
   const [mode, setMode] = useState<"build" | "preview" | "data">("build");
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(() => {
     return localStorage.getItem(`rp-collapsed-${id}`) === "true";
   });
@@ -245,7 +248,22 @@ export default function TemplatePage() {
             </div>
           ))}
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex items-center gap-1.5"
+          onClick={() => setGenerateOpen(true)}
+        >
+          <FileDown className="w-3.5 h-3.5" />
+          Generate
+        </Button>
       </header>
+
+      <GenerateSheet
+        templateId={id!}
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+      />
 
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -253,7 +271,11 @@ export default function TemplatePage() {
           className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}
         >
           {mode === "preview" ? (
-            <PreviewPane blocks={blocks} stylesheet={stylesheet} />
+            <PreviewPane
+              blocks={blocks}
+              stylesheet={stylesheet}
+              templateId={id!}
+            />
           ) : mode === "data" ? (
             <DataPane templateId={id!} />
           ) : (

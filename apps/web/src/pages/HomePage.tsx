@@ -18,7 +18,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <div className="text-4xl mb-4">✓</div>
-        <h1 className="text-2xl font-semibold tracking-tight mb-2">Email verified</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-2">
+          Email verified
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
           Your account is active. You're all set.
         </p>

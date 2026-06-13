@@ -11,7 +11,10 @@ declare module "@tiptap/core" {
       setConditionIntent: (intent: string) => ReturnType;
       setRepeatIntent: (intent: string) => ReturnType;
       clearSectionIntent: () => ReturnType;
-      wrapInSection: (attrs?: { conditionIntent?: string; repeatIntent?: string }) => ReturnType;
+      wrapInSection: (attrs?: {
+        conditionIntent?: string;
+        repeatIntent?: string;
+      }) => ReturnType;
     };
   }
 }
@@ -55,7 +58,9 @@ export const SectionNode = Node.create<SectionOptions>({
   },
 
   addNodeView() {
-    return this.options.nodeViewRenderer ?? (null as unknown as NodeViewRenderer);
+    return (
+      this.options.nodeViewRenderer ?? (null as unknown as NodeViewRenderer)
+    );
   },
 
   addCommands() {
@@ -63,17 +68,26 @@ export const SectionNode = Node.create<SectionOptions>({
       setConditionIntent:
         (intent: string) =>
         ({ commands }) =>
-          commands.updateAttributes(this.name, { conditionIntent: intent, repeatIntent: null }),
+          commands.updateAttributes(this.name, {
+            conditionIntent: intent,
+            repeatIntent: null,
+          }),
 
       setRepeatIntent:
         (intent: string) =>
         ({ commands }) =>
-          commands.updateAttributes(this.name, { repeatIntent: intent, conditionIntent: null }),
+          commands.updateAttributes(this.name, {
+            repeatIntent: intent,
+            conditionIntent: null,
+          }),
 
       clearSectionIntent:
         () =>
         ({ commands }) =>
-          commands.updateAttributes(this.name, { conditionIntent: null, repeatIntent: null }),
+          commands.updateAttributes(this.name, {
+            conditionIntent: null,
+            repeatIntent: null,
+          }),
 
       wrapInSection:
         (attrs = {}) =>
@@ -90,7 +104,9 @@ export const SectionNode = Node.create<SectionOptions>({
 
           if (dispatch) {
             const tr = state.tr;
-            tr.wrap(range, [{ type: sectionType, attrs: { ...attrs, key: `s${Date.now()}` } }]);
+            tr.wrap(range, [
+              { type: sectionType, attrs: { ...attrs, key: `s${Date.now()}` } },
+            ]);
             dispatch(tr);
           }
           return true;

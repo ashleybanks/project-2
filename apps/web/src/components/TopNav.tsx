@@ -20,7 +20,12 @@ export default function TopNav() {
 
   const user = session?.user;
   const initials = user?.name
-    ? user.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+    ? user.name
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
     : (user?.email?.[0]?.toUpperCase() ?? "?");
 
   async function handleSignOut() {
@@ -53,13 +58,19 @@ export default function TopNav() {
         {open && (
           <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-border rounded-lg shadow-lg py-1 z-50">
             <button
-              onClick={() => { navigate("/app/settings/account"); setOpen(false); }}
+              onClick={() => {
+                navigate("/app/settings/account");
+                setOpen(false);
+              }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
             >
               Account settings
             </button>
             <button
-              onClick={() => { navigate("/app/stylesheets"); setOpen(false); }}
+              onClick={() => {
+                navigate("/app/stylesheets");
+                setOpen(false);
+              }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
             >
               Brand rules

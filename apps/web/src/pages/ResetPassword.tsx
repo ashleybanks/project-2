@@ -42,8 +42,13 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-4">Invalid reset link.</p>
-          <Link to="/forgot-password" className="text-sm text-primary hover:underline font-medium">
+          <p className="text-sm text-muted-foreground mb-4">
+            Invalid reset link.
+          </p>
+          <Link
+            to="/forgot-password"
+            className="text-sm text-primary hover:underline font-medium"
+          >
             Request a new one
           </Link>
         </div>
@@ -55,8 +60,12 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
-          <p className="text-sm text-muted-foreground mt-1">Must be at least 8 characters.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Choose a new password
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Must be at least 8 characters.
+          </p>
         </div>
         <Card className="shadow-sm">
           <CardContent className="pt-6">

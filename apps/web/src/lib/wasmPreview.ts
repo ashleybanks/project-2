@@ -5,9 +5,13 @@ type WasmModule = typeof import("typst-compiler");
 
 let modulePromise: Promise<WasmModule> | null = null;
 
-function getModule(): Promise<WasmModule> {
+async function getModule(): Promise<WasmModule> {
   if (!modulePromise) {
-    modulePromise = import("typst-compiler");
+    modulePromise = import("typst-compiler").then(async (mod) => {
+      // --target web requires explicit init before any exports are usable
+      await mod.default();
+      return mod;
+    });
   }
   return modulePromise;
 }
@@ -117,4 +121,32 @@ export async function renderPreviewWithData(
     JSON.stringify(payload),
     fontArrays,
   );
+}
+
+export async function renderPreviewSvg(
+  blocks: PtTopLevel[],
+  stylesheet: StylesheetDef,
+): Promise<string[]> {
+  const wasm = await getModule();
+  const fontArrays = await resolveFonts(stylesheet);
+  return wasm.render_preview_svg(
+    JSON.stringify(blocks),
+    JSON.stringify(stylesheet),
+    fontArrays,
+  ) as string[];
+}
+
+export async function renderPreviewWithDataSvg(
+  blocks: PtTopLevel[],
+  stylesheet: StylesheetDef,
+  payload: object,
+): Promise<string[]> {
+  const wasm = await getModule();
+  const fontArrays = await resolveFonts(stylesheet);
+  return wasm.render_preview_with_data_svg(
+    JSON.stringify(blocks),
+    JSON.stringify(stylesheet),
+    JSON.stringify(payload),
+    fontArrays,
+  ) as string[];
 }

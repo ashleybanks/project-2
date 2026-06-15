@@ -31,5 +31,7 @@ dev:
 
 # Build typst-compiler to Wasm for browser preview (requires wasm-pack 0.15+)
 # Install: cargo install wasm-pack
+# --target web   : produces explicit-init output; wasmPreview.ts calls mod.default() before use
+# --features wasm: gates wasm_bindgen exports in src/lib.rs — must not be omitted
 wasm-build:
-    cd crates/typst-compiler && wasm-pack build --target bundler -d ../../apps/web/crates/typst-compiler/pkg -- --features wasm
+    cd crates/typst-compiler && wasm-pack build --target web -d ../../apps/web/crates/typst-compiler/pkg -- --features wasm

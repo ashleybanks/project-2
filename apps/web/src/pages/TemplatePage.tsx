@@ -19,12 +19,11 @@ import BlockCanvas from "../components/BlockCanvas";
 import PreviewPane from "../components/PreviewPane";
 import RightPanel from "../components/RightPanel";
 import DataPane from "../components/DataPane";
-import GenerateSheet from "../components/GenerateSheet";
+import JobPane from "../components/JobPane";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ArrowLeft } from "lucide-react";
 import { useEditor } from "@tiptap/react";
-import { PenLine, Eye, Database, FileDown } from "lucide-react";
 
 function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
   const result = new Map<string, string>();
@@ -83,20 +82,33 @@ export default function TemplatePage() {
     "idle",
   );
   const [canvasKey, setCanvasKey] = useState(0);
-  const [mode, setMode] = useState<"build" | "preview" | "data">("build");
-  const [generateOpen, setGenerateOpen] = useState(false);
+  const [mode, setMode] = useState<"design-template" | "preview" | "data">(
+    "design-template",
+  );
+  const [designSubTab, setDesignSubTab] = useState<"template" | "schema">(
+    "template",
+  );
   const [panelCollapsed, setPanelCollapsed] = useState(() => {
     return localStorage.getItem(`rp-collapsed-${id}`) === "true";
   });
+  // Track the panel state before an auto-collapse so we can restore it
+  const panelCollapsedBeforeAutoRef = useRef<boolean | null>(null);
 
   function handlePanelCollapsedChange(next: boolean) {
     setPanelCollapsed(next);
     localStorage.setItem(`rp-collapsed-${id}`, String(next));
   }
 
-  function handleModeChange(next: "build" | "preview" | "data") {
+  function handleModeChange(next: "design-template" | "preview" | "data") {
     if ((next === "preview" || next === "data") && !panelCollapsed) {
+      panelCollapsedBeforeAutoRef.current = panelCollapsed;
       handlePanelCollapsedChange(true);
+    } else if (
+      next === "design-template" &&
+      panelCollapsedBeforeAutoRef.current !== null
+    ) {
+      handlePanelCollapsedChange(panelCollapsedBeforeAutoRef.current);
+      panelCollapsedBeforeAutoRef.current = null;
     }
     setMode(next);
   }
@@ -197,73 +209,82 @@ export default function TemplatePage() {
       </div>
     );
 
+  const topTabs = [
+    { tab: "design-template" as const, label: "Design" },
+    { tab: "data" as const, label: "Data" },
+    { tab: "preview" as const, label: "Preview" },
+  ];
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Template header */}
-      <header className="border-b border-border bg-white px-6 py-2.5 flex items-center gap-4 shrink-0">
-        <button
-          onClick={() => navigate("/app/templates")}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Templates
-        </button>
-        <Separator orientation="vertical" className="h-8" />
-        <Input
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          className="border-none shadow-none text-sm font-medium p-0 h-auto focus-visible:ring-0 max-w-xs"
-        />
-        <span className="text-xs text-muted-foreground">
-          {saveStatus === "saving"
-            ? "Saving…"
-            : saveStatus === "saved"
-              ? "Saved"
-              : ""}
-        </span>
-        <div className="ml-auto flex rounded-md border border-border shadow-sm overflow-hidden">
-          {(
-            [
-              { m: "build", label: "Build", Icon: PenLine, enabled: true },
-              { m: "preview", label: "Preview", Icon: Eye, enabled: true },
-              { m: "data", label: "Data", Icon: Database, enabled: true },
-            ] as const
-          ).map(({ m, label, Icon, enabled }, i) => (
-            <div key={m} className="flex items-stretch">
-              {i > 0 && <div className="w-px bg-border" />}
+      <header className="border-b border-border bg-white px-4 py-2.5 flex items-center shrink-0">
+        {/* Left: back + name */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            onClick={() => navigate("/app/templates")}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/60 shrink-0"
+            title="Back to templates"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <Separator orientation="vertical" className="h-5" />
+          <Input
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            className="border-none shadow-none text-sm font-medium p-0 h-auto focus-visible:ring-0 max-w-xs"
+          />
+          <span className="text-xs text-muted-foreground w-12 shrink-0">
+            {saveStatus === "saving"
+              ? "Saving…"
+              : saveStatus === "saved"
+                ? "Saved"
+                : ""}
+          </span>
+        </div>
+
+        {/* Center: tabs */}
+        <div className="flex items-center">
+          {topTabs.map(({ tab, label }) => {
+            const active = mode === tab;
+            return (
               <button
-                onClick={() => enabled && handleModeChange(m)}
-                disabled={!enabled}
-                title={!enabled ? label : undefined}
-                className={`flex items-center gap-1.5 px-3 h-8 text-sm font-medium transition-colors ${
-                  mode === m
-                    ? "bg-primary text-primary-foreground"
-                    : !enabled
-                      ? "text-muted-foreground/40 cursor-not-allowed"
-                      : "text-muted-foreground hover:text-foreground hover:bg-zinc-50"
+                key={tab}
+                onClick={() => handleModeChange(tab)}
+                className={`px-4 h-9 text-sm font-medium border-b-2 transition-colors ${
+                  active
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{label}</span>
+                {label}
               </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex items-center gap-1.5"
-          onClick={() => setGenerateOpen(true)}
-        >
-          <FileDown className="w-3.5 h-3.5" />
-          Generate
-        </Button>
+
+        {/* Right: reserved for future actions */}
+        <div className="flex-1" />
       </header>
 
-      <GenerateSheet
-        templateId={id!}
-        open={generateOpen}
-        onClose={() => setGenerateOpen(false)}
-      />
+      {/* Design sub-tabs: Template | Schema */}
+      {mode === "design-template" && (
+        <div className="border-b border-border bg-white px-6 flex items-center gap-0 shrink-0">
+          {(["template", "schema"] as const).map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setDesignSubTab(sub)}
+              className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px capitalize transition-colors ${
+                designSubTab === sub
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {sub === "template" ? "Template" : "Schema"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -277,6 +298,8 @@ export default function TemplatePage() {
               templateId={id!}
             />
           ) : mode === "data" ? (
+            <JobPane templateId={id!} />
+          ) : designSubTab === "schema" ? (
             <DataPane templateId={id!} />
           ) : (
             <div className="px-8 pt-6 pb-8">

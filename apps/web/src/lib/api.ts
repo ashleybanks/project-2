@@ -356,6 +356,20 @@ export const patchMapping = (
     },
   );
 
+export interface ResolveExpressionResult {
+  expression: string;
+  expression_label: string;
+}
+
+export const resolveExpression = (
+  templateId: string,
+  body: { field_path: string; field_type: string; description: string },
+) =>
+  apiFetch<ResolveExpressionResult>(
+    `/templates/${templateId}/intents/resolve-expression`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+
 export const generateTestData = (templateId: string, count = 10) =>
   apiFetch<Record<string, unknown>[]>(
     `/templates/${templateId}/schema/test-data?count=${count}`,
@@ -366,11 +380,47 @@ export const generateTestData = (templateId: string, count = 10) =>
 
 // ── Jobs / generate ───────────────────────────────────────────────────────────
 
-export interface JobStatus {
+// ── Job model ─────────────────────────────────────────────────────────────────
+
+export type JobItemStatus =
+  | "loaded"
+  | "queued"
+  | "processing"
+  | "done"
+  | "failed";
+export type JobContainerStatus =
+  | "draft"
+  | "pending"
+  | "processing"
+  | "done"
+  | "partial"
+  | "failed";
+
+export interface JobItem {
   id: string;
-  status: "pending" | "processing" | "done" | "failed";
+  job_id: string;
+  record_index: number;
+  record_id: string | null;
+  status: JobItemStatus;
   error_message: string | null;
-  download_url: string | null;
+  payload: Record<string, unknown>;
+}
+
+export interface Job {
+  id: string;
+  template_id: string;
+  name: string;
+  status: JobContainerStatus;
+  is_active: boolean;
+  total_count: number;
+  done_count: number;
+  failed_count: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface JobDetail extends Job {
+  items: JobItem[];
 }
 
 export interface ValidationError {
@@ -378,39 +428,39 @@ export interface ValidationError {
   message: string;
 }
 
-export type GenerateResult =
-  | { ok: true; job_id: string }
-  | { ok: false; errors: ValidationError[] };
+// ── Job API ───────────────────────────────────────────────────────────────────
 
-export async function generateDocument(
+export const listTemplateJobs = (templateId: string) =>
+  apiFetch<Job[]>(`/templates/${templateId}/jobs`);
+
+export const createJob = (
   templateId: string,
-  payload: Record<string, unknown>,
-): Promise<GenerateResult> {
-  const res = await fetch(`/api/templates/${templateId}/generate`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payload }),
-  });
+  records: Record<string, unknown>[],
+) =>
+  apiFetch<{ job_id: string; item_count: number }>(
+    `/templates/${templateId}/jobs`,
+    {
+      method: "POST",
+      body: JSON.stringify({ records }),
+    },
+  );
 
-  if (res.status === 422) {
-    const body = await res.json().catch(() => ({ errors: [] }));
-    return { ok: false, errors: body.errors ?? [] };
-  }
+export const getJobDetail = (jobId: string) =>
+  apiFetch<JobDetail>(`/jobs/${jobId}`);
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(body.error ?? res.statusText);
-  }
+export const submitJob = (jobId: string) =>
+  apiFetch<{ queued: number }>(`/jobs/${jobId}/submit`, { method: "POST" });
 
-  const body = await res.json();
-  return { ok: true, job_id: body.job_id };
-}
+export const submitJobItem = (jobId: string, itemId: string) =>
+  apiFetch<void>(`/jobs/${jobId}/items/${itemId}/submit`, { method: "POST" });
 
-export const getJob = (jobId: string) => apiFetch<JobStatus>(`/jobs/${jobId}`);
+export const downloadItemUrl = (jobId: string, itemId: string) =>
+  `/api/jobs/${jobId}/items/${itemId}/download`;
 
-export const getJobDownloadUrl = (jobId: string) =>
-  `/api/jobs/${jobId}/download`;
+export const downloadJobUrl = (jobId: string) => `/api/jobs/${jobId}/download`;
+
+export const setActiveJob = (jobId: string) =>
+  apiFetch<{ job_id: string }>(`/jobs/${jobId}/active`, { method: "PATCH" });
 
 export const importDocx = async (file: File): Promise<BlockModel> => {
   const form = new FormData();

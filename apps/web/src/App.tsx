@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import TemplateListPage from "./pages/TemplateListPage";
 import NewTemplatePage from "./pages/NewTemplatePage";
 import TemplatePage from "./pages/TemplatePage";
+import JobHistoryPage from "./pages/JobHistoryPage";
 import StylesheetsPage from "./pages/StylesheetsPage";
 import MfaSettingsPage from "./pages/MfaSettingsPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
@@ -44,6 +45,10 @@ export default function App() {
                     <Route path="templates" element={<TemplateListPage />} />
                     <Route path="templates/new" element={<NewTemplatePage />} />
                     <Route path="templates/:id" element={<TemplatePage />} />
+                    <Route
+                      path="templates/:id/jobs"
+                      element={<JobHistoryPage />}
+                    />
                     <Route path="stylesheets" element={<StylesheetsPage />} />
                     <Route
                       path="settings/account"

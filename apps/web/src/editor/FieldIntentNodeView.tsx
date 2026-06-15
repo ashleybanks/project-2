@@ -3,7 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import type { Editor } from "@tiptap/core";
-import { getSchema, triggerResolve, patchMapping } from "@/lib/api";
+import {
+  getSchema,
+  triggerResolve,
+  patchMapping,
+  resolveExpression,
+} from "@/lib/api";
 import type { IntentMapping, MappingConfidence } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +20,7 @@ interface NodeViewProps {
   extension: { options: FieldIntentOptions };
   deleteNode: () => void;
   editor: Editor;
+  updateAttributes: (attrs: Record<string, unknown>) => void;
 }
 
 // ── Confidence helpers ────────────────────────────────────────────────────────
@@ -145,16 +151,90 @@ function FieldPicker({
   );
 }
 
+// ── Expression input ──────────────────────────────────────────────────────────
+
+function ExpressionInput({
+  templateId,
+  fieldPath,
+  fieldType,
+  onResolved,
+}: {
+  templateId: string;
+  fieldPath: string | null;
+  fieldType: string;
+  onResolved: (expr: string, label: string) => void;
+}) {
+  const [desc, setDesc] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const resolveMut = useMutation({
+    mutationFn: () =>
+      resolveExpression(templateId, {
+        field_path: fieldPath ?? "",
+        field_type: fieldType,
+        description: desc,
+      }),
+    onSuccess: (result) => {
+      onResolved(result.expression, result.expression_label);
+      setDesc("");
+      setError(null);
+    },
+    onError: (e) => {
+      setError(e instanceof Error ? e.message : "Failed to resolve");
+    },
+  });
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-1.5">
+        <Input
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          placeholder="e.g. format as currency"
+          className="h-7 text-xs flex-1"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && desc.trim() && !resolveMut.isPending) {
+              resolveMut.mutate();
+            }
+          }}
+        />
+        <Button
+          size="sm"
+          className="h-7 text-xs px-2 shrink-0"
+          disabled={!desc.trim() || !fieldPath || resolveMut.isPending}
+          onClick={(e) => {
+            e.stopPropagation();
+            resolveMut.mutate();
+          }}
+        >
+          {resolveMut.isPending ? "…" : "Resolve"}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 // ── Resolution popover ────────────────────────────────────────────────────────
 
 function ResolutionPopover({
   intentKey,
   templateId,
+  expression,
+  expressionLabel,
+  onUpdateExpression,
+  onClearExpression,
   onSwitchToData,
   onClose,
 }: {
   intentKey: string;
   templateId: string;
+  expression: string | null;
+  expressionLabel: string | null;
+  onUpdateExpression: (expr: string, label: string) => void;
+  onClearExpression: () => void;
   onSwitchToData: (() => void) | null;
   onClose: () => void;
 }) {
@@ -362,6 +442,38 @@ function ResolutionPopover({
               </button>
             )}
           </div>
+
+          {/* Expression section */}
+          <div className="mt-2 pt-2 border-t border-border space-y-1.5">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Format or compute
+            </p>
+            {expressionLabel ? (
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-mono text-foreground break-all">
+                    {expressionLabel}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Expression active
+                  </p>
+                </div>
+                <button
+                  onClick={onClearExpression}
+                  className="text-xs text-muted-foreground hover:text-destructive shrink-0 transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <ExpressionInput
+                templateId={templateId}
+                fieldPath={mapping.field_path}
+                fieldType={mapping.intent_type}
+                onResolved={onUpdateExpression}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -373,7 +485,7 @@ function ResolutionPopover({
 function FieldIntentNodeViewComponent({
   node,
   extension,
-  deleteNode,
+  updateAttributes,
 }: NodeViewProps) {
   const { templateId, onSwitchToData } = extension.options;
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -382,11 +494,12 @@ function FieldIntentNodeViewComponent({
   const label: string = node.attrs.label as string;
   const displayName: string | null = node.attrs.display_name as string | null;
   const fieldPath: string | null = node.attrs.field_path as string | null;
+  const expression: string | null = node.attrs.expression as string | null;
+  const expressionLabel: string | null = node.attrs.expression_label as
+    | string
+    | null;
 
-  // Show display_name if available, otherwise label
   const chipLabel = displayName || label;
-
-  // Simple resolved indicator from block model (no confidence level without schema query)
   const isResolved = !!fieldPath;
 
   return (
@@ -405,6 +518,11 @@ function FieldIntentNodeViewComponent({
         title={fieldPath ? `→ ${fieldPath}` : "Not resolved"}
       >
         <span className="text-xs font-medium">{chipLabel}</span>
+        {expression && (
+          <span className="text-xs font-medium text-primary leading-none">
+            ƒ
+          </span>
+        )}
         <ResolutionDot
           intentKey={intentKey}
           templateId={templateId}
@@ -421,6 +539,14 @@ function FieldIntentNodeViewComponent({
           <ResolutionPopover
             intentKey={intentKey}
             templateId={templateId}
+            expression={expression}
+            expressionLabel={expressionLabel}
+            onUpdateExpression={(expr, label) =>
+              updateAttributes({ expression: expr, expression_label: label })
+            }
+            onClearExpression={() =>
+              updateAttributes({ expression: null, expression_label: null })
+            }
             onSwitchToData={onSwitchToData}
             onClose={() => setPopoverOpen(false)}
           />

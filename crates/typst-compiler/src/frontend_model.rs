@@ -62,6 +62,7 @@ pub struct FrontendTableCell {
 pub enum FrontendChild {
     Span(FrontendSpan),
     FieldIntent(FrontendFieldIntent),
+    DerivedFieldIntent(FrontendDerivedFieldIntent),
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +76,14 @@ pub struct FrontendSpan {
 pub struct FrontendFieldIntent {
     pub label: String,
     pub field_path: Option<String>,
+    pub expression: Option<String>,
+    pub expression_label: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FrontendDerivedFieldIntent {
+    pub expression_label: String,
+    pub expression: Option<String>,
 }
 
 // ── Mapping ───────────────────────────────────────────────────────────────────
@@ -130,11 +139,121 @@ fn map_child(child: FrontendChild) -> Option<PtChild> {
             marks: s.marks,
         })),
         FrontendChild::FieldIntent(fi) => {
-            if let Some(path) = fi.field_path {
+            if fi.expression.is_some() {
+                // Expression set: emit a placeholder; server-side eval replaces it at render time.
+                // For WASM preview, fall through to the raw field_path render.
+                if let Some(path) = fi.field_path {
+                    Some(PtChild::MergeField(crate::model::PtMergeField { field: path }))
+                } else {
+                    Some(PtChild::Span(PtSpan { text: fi.label, marks: vec![] }))
+                }
+            } else if let Some(path) = fi.field_path {
                 Some(PtChild::MergeField(crate::model::PtMergeField { field: path }))
             } else {
                 // Unresolved intent: render the label as plain text so it's visible
                 Some(PtChild::Span(PtSpan { text: fi.label, marks: vec![] }))
+            }
+        }
+        FrontendChild::DerivedFieldIntent(dfi) => {
+            Some(PtChild::Span(PtSpan {
+                text: format!("[{}]", dfi.expression_label),
+                marks: vec![],
+            }))
+        }
+    }
+}
+
+// ── Expression entry collection / application ────────────────────────────────
+
+/// Represents a FieldIntent that has a Liquid expression requiring server-side evaluation.
+/// `placeholder` is the synthetic payload key injected at render time.
+pub struct ExpressionEntry {
+    pub placeholder: String,
+    pub expression: String,
+}
+
+/// Walk `blocks` and return one `ExpressionEntry` per `FieldIntent` that has an expression.
+/// Entries are ordered by tree traversal order; `apply_expression_entries` must use the same order.
+pub fn collect_expression_entries(blocks: &[FrontendTopLevel]) -> Vec<ExpressionEntry> {
+    let mut out = Vec::new();
+    let mut idx = 0usize;
+    collect_from_top_level_slice(blocks, &mut out, &mut idx);
+    out
+}
+
+fn collect_from_top_level_slice(
+    blocks: &[FrontendTopLevel],
+    out: &mut Vec<ExpressionEntry>,
+    idx: &mut usize,
+) {
+    for block in blocks {
+        match block {
+            FrontendTopLevel::Block(b) => collect_from_block(b, out, idx),
+            FrontendTopLevel::Section(s) => collect_from_top_level_slice(&s.content, out, idx),
+            FrontendTopLevel::Table(t) => {
+                for row in &t.rows {
+                    for cell in &row.cells {
+                        for b in &cell.content {
+                            collect_from_block(b, out, idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn collect_from_block(b: &FrontendBlock, out: &mut Vec<ExpressionEntry>, idx: &mut usize) {
+    for child in &b.children {
+        if let FrontendChild::FieldIntent(fi) = child {
+            if let Some(expr) = &fi.expression {
+                out.push(ExpressionEntry {
+                    placeholder: format!("__expr_{idx}__"),
+                    expression: expr.clone(),
+                });
+                *idx += 1;
+            }
+        }
+    }
+}
+
+/// Mutate `blocks` in-place: for each FieldIntent that has an expression,
+/// replace `field_path` with the entry's `placeholder` and clear `expression`
+/// so that `map_to_block_model` emits a standard `MergeField`.
+pub fn apply_expression_entries(blocks: &mut Vec<FrontendTopLevel>, entries: &[ExpressionEntry]) {
+    let mut idx = 0usize;
+    apply_to_top_level_slice(blocks, entries, &mut idx);
+}
+
+fn apply_to_top_level_slice(
+    blocks: &mut Vec<FrontendTopLevel>,
+    entries: &[ExpressionEntry],
+    idx: &mut usize,
+) {
+    for block in blocks.iter_mut() {
+        match block {
+            FrontendTopLevel::Block(b) => apply_to_block(b, entries, idx),
+            FrontendTopLevel::Section(s) => apply_to_top_level_slice(&mut s.content, entries, idx),
+            FrontendTopLevel::Table(t) => {
+                for row in t.rows.iter_mut() {
+                    for cell in row.cells.iter_mut() {
+                        for b in cell.content.iter_mut() {
+                            apply_to_block(b, entries, idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn apply_to_block(b: &mut FrontendBlock, entries: &[ExpressionEntry], idx: &mut usize) {
+    for child in b.children.iter_mut() {
+        if let FrontendChild::FieldIntent(fi) = child {
+            if fi.expression.is_some() && *idx < entries.len() {
+                fi.field_path = Some(entries[*idx].placeholder.clone());
+                fi.expression = None;
+                *idx += 1;
             }
         }
     }

@@ -508,3 +508,134 @@ pub async fn generate_test_data(
     let records = super::test_data::generate_records(&s.raw_schema, q.count.clamp(1, 100));
     Ok(Json(json!(records)))
 }
+
+// ── Expression resolution ─────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct ResolveExpressionBody {
+    pub field_path: String,
+    pub field_type: String,
+    pub description: String,
+}
+
+#[derive(Serialize)]
+pub struct ResolveExpressionResponse {
+    pub expression: String,
+    pub expression_label: String,
+}
+
+/// POST /api/templates/{id}/intents/resolve-expression
+pub async fn resolve_expression(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(template_id): Path<Uuid>,
+    Json(body): Json<ResolveExpressionBody>,
+) -> Result<Json<ResolveExpressionResponse>, AppError> {
+    // Verify template ownership
+    sqlx::query!(
+        "SELECT id FROM templates WHERE id = $1 AND user_id = $2",
+        template_id,
+        user.user_id,
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let prompt = format!(
+        "/no_think\n\
+         You generate Liquid template filter expressions for document field formatting.\n\
+         Given a field path, its type, and a formatting description, return a JSON object with:\n\
+         - \"expression\": a Liquid filter chain (e.g. \"amount | divided_by: 100.0 | round: 2\")\n\
+         - \"expression_label\": a concise human-readable label (e.g. \"÷100, 2 dp\")\n\
+         Return ONLY the JSON object. No explanation, no markdown.\n\n\
+         field_path: {}\nfield_type: {}\ndescription: {}",
+        body.field_path, body.field_type, body.description
+    );
+
+    let client = reqwest::Client::new();
+
+    #[derive(Serialize)]
+    struct ChatRequest<'a> {
+        model: &'a str,
+        messages: Vec<ChatMsg<'a>>,
+        stream: bool,
+        format: &'a str,
+    }
+    #[derive(Serialize)]
+    struct ChatMsg<'a> {
+        role: &'a str,
+        content: &'a str,
+    }
+    #[derive(Deserialize)]
+    struct OllamaResp {
+        message: OllamaMsg,
+    }
+    #[derive(Deserialize)]
+    struct OllamaMsg {
+        content: String,
+    }
+
+    let req = ChatRequest {
+        model: &state.ollama_model,
+        messages: vec![ChatMsg { role: "user", content: &prompt }],
+        stream: false,
+        format: "json",
+    };
+
+    let url = format!("{}/api/chat", state.ollama_base_url);
+    let resp = client
+        .post(&url)
+        .json(&req)
+        .timeout(std::time::Duration::from_secs(30))
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("LLM request failed: {e}")))?;
+
+    if !resp.status().is_success() {
+        let body = resp.text().await.unwrap_or_default();
+        return Err(AppError::Internal(format!("LLM error: {body}")));
+    }
+
+    let ollama: OllamaResp = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to parse LLM response: {e}")))?;
+
+    let content = ollama.message.content.trim().to_string();
+    let content = strip_md_fences(&content);
+
+    #[derive(Deserialize)]
+    struct ExprResult {
+        expression: String,
+        expression_label: String,
+    }
+    let result: ExprResult = serde_json::from_str(content).map_err(|e| {
+        AppError::Unprocessable(format!("LLM returned invalid JSON: {e}\nContent: {content}"))
+    })?;
+
+    // Validate Liquid syntax
+    let parser = liquid::ParserBuilder::with_stdlib()
+        .build()
+        .map_err(|e| AppError::Internal(format!("Liquid parser init: {e}")))?;
+    parser
+        .parse(&format!("{{{{ {} }}}}", result.expression))
+        .map_err(|e| {
+            AppError::Unprocessable(format!(
+                "Generated expression is not valid Liquid: {e}"
+            ))
+        })?;
+
+    Ok(Json(ResolveExpressionResponse {
+        expression: result.expression,
+        expression_label: result.expression_label,
+    }))
+}
+
+fn strip_md_fences(s: &str) -> &str {
+    let s = s.trim();
+    if let Some(inner) = s.strip_prefix("```json").or_else(|| s.strip_prefix("```")) {
+        inner.trim_end_matches("```").trim()
+    } else {
+        s
+    }
+}

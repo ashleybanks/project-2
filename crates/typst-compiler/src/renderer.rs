@@ -24,6 +24,30 @@ pub fn render(source: &str, payload: &serde_json::Value) -> Result<Vec<u8>, Rend
     render_with_fonts(source, payload, &[])
 }
 
+pub fn render_svg(source: &str, payload: &serde_json::Value) -> Result<Vec<String>, RenderError> {
+    render_svg_with_fonts(source, payload, &[])
+}
+
+pub fn render_svg_with_fonts(
+    source: &str,
+    payload: &serde_json::Value,
+    extra_fonts: &[Vec<u8>],
+) -> Result<Vec<String>, RenderError> {
+    let payload_json = serde_json::to_string(payload)
+        .map_err(|e| RenderError::Compile(e.to_string()))?;
+
+    let world = InMemoryWorld::new(source, &payload_json, extra_fonts);
+
+    let result = typst::compile::<PagedDocument>(&world);
+    let document = result.output.map_err(|errs| {
+        let msgs: Vec<_> = errs.iter().map(|e| format!("{}", e.message)).collect();
+        RenderError::Compile(msgs.join("; "))
+    })?;
+
+    let pages: Vec<String> = document.pages.iter().map(typst_svg::svg).collect();
+    Ok(pages)
+}
+
 pub fn render_with_fonts(
     source: &str,
     payload: &serde_json::Value,

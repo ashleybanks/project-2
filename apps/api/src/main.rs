@@ -96,7 +96,7 @@ async fn main() {
         .route("/api/me", get(me))
         .nest("/api/templates", templates::router(state.clone()))
         .nest("/api/templates", schema_nested_router(state.clone()))
-        .nest("/api/templates", generate_nested_router(state.clone()))
+        .nest("/api/templates", template_jobs_nested_router(state.clone()))
         .nest("/api/jobs", jobs::jobs_router(state.clone()))
         .nest("/api/stylesheets", stylesheets::router(state.clone()))
         .layer(middleware::from_fn_with_state(
@@ -135,12 +135,16 @@ async fn main() {
 fn schema_nested_router(state: AppState) -> Router<AppState> {
     Router::new()
         .nest("/{id}/schema", schema::router(state.clone()))
+        .route(
+            "/{id}/intents/resolve-expression",
+            axum::routing::post(schema::handlers::resolve_expression),
+        )
         .with_state(state)
 }
 
-fn generate_nested_router(state: AppState) -> Router<AppState> {
+fn template_jobs_nested_router(state: AppState) -> Router<AppState> {
     Router::new()
-        .nest("/{id}/generate", jobs::router(state.clone()))
+        .nest("/{id}", jobs::template_jobs_router(state.clone()))
         .with_state(state)
 }
 

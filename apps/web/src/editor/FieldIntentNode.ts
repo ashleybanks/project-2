@@ -38,6 +38,8 @@ export const FieldIntentNode = Node.create<FieldIntentOptions>({
       key: { default: () => `fi${Date.now()}` },
       display_name: { default: null },
       field_path: { default: null },
+      expression: { default: null },
+      expression_label: { default: null },
     };
   },
 

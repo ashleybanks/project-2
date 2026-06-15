@@ -29,6 +29,9 @@ pub enum AppError {
 
     #[error("DOCX parse failed: {0}")]
     DocxParseFailed(String),
+
+    #[error("Unprocessable: {0}")]
+    Unprocessable(String),
 }
 
 impl IntoResponse for AppError {
@@ -61,6 +64,9 @@ impl IntoResponse for AppError {
             AppError::FileTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, self.to_string()),
             AppError::DocxParseFailed(msg) => {
                 tracing::warn!("DOCX parse failed: {msg}");
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
+            AppError::Unprocessable(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
         };

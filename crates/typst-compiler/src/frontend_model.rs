@@ -172,6 +172,150 @@ pub struct ExpressionEntry {
     pub expression: String,
 }
 
+/// Evaluate all expressions in `blocks` against `payload`, mutate the blocks to use
+/// placeholder keys, and return the augmented payload. Single call covers both WASM
+/// preview and server-side PDF render.
+pub fn evaluate_and_apply_expressions(
+    blocks: &mut Vec<FrontendTopLevel>,
+    payload: &serde_json::Value,
+) -> serde_json::Value {
+    let entries = collect_expression_entries(blocks);
+    if entries.is_empty() {
+        return payload.clone();
+    }
+    let augmented = evaluate_expressions(&entries, payload);
+    apply_expression_entries(blocks, &entries);
+    augmented
+}
+
+/// Parse `expression` as a Liquid filter chain (wrapped in `{{ }}`).
+/// Returns `Ok(())` if valid, `Err(message)` if not.
+pub fn validate_liquid_expression(expression: &str) -> Result<(), String> {
+    let parser = liquid::ParserBuilder::with_stdlib()
+        .build()
+        .map_err(|e| format!("Liquid parser init: {e}"))?;
+    parser
+        .parse(&format!("{{{{ {} }}}}", expression))
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+fn evaluate_expressions(
+    entries: &[ExpressionEntry],
+    payload: &serde_json::Value,
+) -> serde_json::Value {
+    let parser = match liquid::ParserBuilder::with_stdlib().build() {
+        Ok(p) => p,
+        Err(_) => return payload.clone(),
+    };
+    let globals = json_to_liquid_object(payload);
+    let mut augmented = payload.clone();
+    for entry in entries {
+        let tmpl_str = format!("{{{{ {} }}}}", entry.expression);
+        let rendered = parser
+            .parse(&tmpl_str)
+            .and_then(|t| t.render(&globals))
+            .unwrap_or_default();
+        let rendered = apply_ordinal_suffix(rendered);
+        if let serde_json::Value::Object(ref mut map) = augmented {
+            map.insert(entry.placeholder.clone(), serde_json::Value::String(rendered));
+        }
+    }
+    augmented
+}
+
+/// Replace `%q` in a rendered string with the ordinal suffix of the preceding digits.
+/// liquid-core passes unknown strftime codes through as literal text, so `%-d%q` renders
+/// as e.g. "15%q" which we then post-process to "15th".
+fn apply_ordinal_suffix(s: String) -> String {
+    if !s.contains("%q") {
+        return s;
+    }
+    let mut result = String::new();
+    let mut remaining = s.as_str();
+    while let Some(pos) = remaining.find("%q") {
+        let before = &remaining[..pos];
+        let digit_start = before
+            .rfind(|c: char| !c.is_ascii_digit())
+            .map_or(0, |i| i + 1);
+        result.push_str(&before[..digit_start]);
+        if let Ok(n) = before[digit_start..].parse::<u32>() {
+            result.push_str(&n.to_string());
+            result.push_str(ordinal_suffix(n));
+        } else {
+            result.push_str(before);
+        }
+        remaining = &remaining[pos + 2..];
+    }
+    result.push_str(remaining);
+    result
+}
+
+fn ordinal_suffix(n: u32) -> &'static str {
+    if matches!(n % 100, 11..=13) {
+        return "th";
+    }
+    match n % 10 {
+        1 => "st",
+        2 => "nd",
+        3 => "rd",
+        _ => "th",
+    }
+}
+
+/// Returns true for strings that look like a bare ISO date: `YYYY-MM-DD`.
+/// liquid's date filter requires a time component, so callers should append
+/// ` 00:00:00 +0000` before passing to liquid.
+fn is_iso_date_only(s: &str) -> bool {
+    if s.len() != 10 {
+        return false;
+    }
+    let b = s.as_bytes();
+    b[4] == b'-' && b[7] == b'-'
+        && b[..4].iter().all(|c| c.is_ascii_digit())
+        && b[5..7].iter().all(|c| c.is_ascii_digit())
+        && b[8..10].iter().all(|c| c.is_ascii_digit())
+}
+
+fn json_to_liquid_object(v: &serde_json::Value) -> liquid::Object {
+    if let serde_json::Value::Object(map) = v {
+        map.iter()
+            .map(|(k, v)| (k.clone().into(), json_to_liquid_value(v)))
+            .collect()
+    } else {
+        liquid::Object::new()
+    }
+}
+
+fn json_to_liquid_value(v: &serde_json::Value) -> liquid::model::Value {
+    match v {
+        serde_json::Value::Null => liquid::model::Value::Nil,
+        serde_json::Value::Bool(b) => liquid::model::Value::scalar(*b),
+        serde_json::Value::Number(n) => n
+            .as_f64()
+            .map(liquid::model::Value::scalar)
+            .unwrap_or(liquid::model::Value::Nil),
+        serde_json::Value::String(s) => {
+            // liquid's date filter requires a time component; normalise ISO date-only
+            // strings (YYYY-MM-DD) so the date filter can parse them.
+            let v = if is_iso_date_only(s) {
+                format!("{} 00:00:00 +0000", s)
+            } else {
+                s.clone()
+            };
+            liquid::model::Value::scalar(v)
+        }
+        serde_json::Value::Array(arr) => {
+            liquid::model::Value::Array(arr.iter().map(json_to_liquid_value).collect())
+        }
+        serde_json::Value::Object(obj) => liquid::model::Value::Object(
+            obj.iter()
+                .map(|(k, v)| (k.clone().into(), json_to_liquid_value(v)))
+                .collect(),
+        ),
+    }
+}
+
 /// Walk `blocks` and return one `ExpressionEntry` per `FieldIntent` that has an expression.
 /// Entries are ordered by tree traversal order; `apply_expression_entries` must use the same order.
 pub fn collect_expression_entries(blocks: &[FrontendTopLevel]) -> Vec<ExpressionEntry> {

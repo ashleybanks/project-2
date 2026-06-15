@@ -68,7 +68,6 @@ dependencies = [
  "chrono",
  "dotenvy",
  "jsonschema",
- "liquid",
  "quick-xml 0.37.5",
  "rand 0.8.6",
  "reqwest",
@@ -4367,6 +4366,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "js-sys",
+ "liquid",
  "serde",
  "serde_json",
  "thiserror",

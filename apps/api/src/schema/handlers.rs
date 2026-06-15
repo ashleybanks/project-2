@@ -543,11 +543,39 @@ pub async fn resolve_expression(
 
     let prompt = format!(
         "/no_think\n\
-         You generate Liquid template filter expressions for document field formatting.\n\
-         Given a field path, its type, and a formatting description, return a JSON object with:\n\
-         - \"expression\": a Liquid filter chain (e.g. \"amount | divided_by: 100.0 | round: 2\")\n\
-         - \"expression_label\": a concise human-readable label (e.g. \"÷100, 2 dp\")\n\
-         Return ONLY the JSON object. No explanation, no markdown.\n\n\
+         You generate Liquid template expressions for document field formatting.\n\
+         \n\
+         The expression is the full content that goes inside {{{{ }}}} in a Liquid template.\n\
+         It MUST start with the field_path variable, then zero or more filters separated by |.\n\
+         \n\
+         SYNTAX: field_path | filter1 | filter2: arg\n\
+         \n\
+         AVAILABLE FILTERS (use only these):\n\
+         Strings : upcase, downcase, capitalize, strip, truncate: N, replace: \"a\",\"b\", prepend: \"x\", append: \"x\"\n\
+         Numbers : plus: N, minus: N, times: N, divided_by: N, round, round: N, ceil, floor, abs\n\
+         Dates   : date: \"FORMAT\" — strftime codes: %-d=day (no pad), %d=day (zero-pad), %b=short month, %B=full month, %Y=year, %m=month num, %q=ordinal suffix (st/nd/rd/th)\n\
+         Arrays  : first, last, join: \", \", size, sort, uniq\n\
+         Any     : default: \"fallback\"\n\
+         \n\
+         IMPORTANT LIMITATIONS:\n\
+         - Ordinal suffix: use %q immediately after the day number: %-d%q gives \"1st\", \"2nd\", \"15th\"\n\
+         - No currency symbol filter — use prepend: \"£\" or append: \" USD\"\n\
+         - Dot notation accesses nested fields: invoice.date accesses date inside invoice object\n\
+         \n\
+         EXAMPLES (field_path shown in parentheses):\n\
+         \"format as currency\" (amount) → expression: \"amount | prepend: \\\"£\\\"\", label: \"£ prefix\"\n\
+         \"2 decimal places\" (total) → expression: \"total | round: 2\", label: \"2 dp\"\n\
+         \"show month and year\" (invoice.date) → expression: \"invoice.date | date: \\\"%B %Y\\\"\", label: \"Month YYYY\"\n\
+         \"short date\" (signed_on) → expression: \"signed_on | date: \\\"%d %b %Y\\\"\", label: \"DD Mon YYYY\"\n\
+         \"1st Jan 2020 style\" (date) → expression: \"date | date: \\\"%-d%q %b %Y\\\"\", label: \"D[st] Mon YYYY\"\n\
+         \"uppercase\" (client.name) → expression: \"client.name | upcase\", label: \"UPPERCASE\"\n\
+         \"first 50 chars\" (description) → expression: \"description | truncate: 50\", label: \"first 50 chars\"\n\
+         \n\
+         Return ONLY a JSON object with no extra text:\n\
+         {{\"expression\": \"field_path | filters...\", \"expression_label\": \"short label\"}}\n\
+         \n\
+         If the exact request is not achievable, use the closest approximation and note it in expression_label.\n\
+         \n\
          field_path: {}\nfield_type: {}\ndescription: {}",
         body.field_path, body.field_type, body.description
     );
@@ -586,10 +614,22 @@ pub async fn resolve_expression(
     let resp = client
         .post(&url)
         .json(&req)
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(60))
         .send()
         .await
-        .map_err(|e| AppError::Internal(format!("LLM request failed: {e}")))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                AppError::Unprocessable(
+                    "The model took too long to respond. Try a simpler description.".into(),
+                )
+            } else if e.is_connect() {
+                AppError::Unprocessable(
+                    "Could not reach the AI model (is Ollama running?).".into(),
+                )
+            } else {
+                AppError::Internal(format!("LLM request failed: {e}"))
+            }
+        })?;
 
     if !resp.status().is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -614,15 +654,10 @@ pub async fn resolve_expression(
     })?;
 
     // Validate Liquid syntax
-    let parser = liquid::ParserBuilder::with_stdlib()
-        .build()
-        .map_err(|e| AppError::Internal(format!("Liquid parser init: {e}")))?;
-    parser
-        .parse(&format!("{{{{ {} }}}}", result.expression))
+    typst_compiler::frontend_model::validate_liquid_expression(&result.expression)
         .map_err(|e| {
-            AppError::Unprocessable(format!(
-                "Generated expression is not valid Liquid: {e}"
-            ))
+            tracing::warn!(expression = %result.expression, "LLM returned invalid Liquid: {e}");
+            AppError::Unprocessable(format!("Generated expression is not valid Liquid: {e}"))
         })?;
 
     Ok(Json(ResolveExpressionResponse {

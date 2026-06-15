@@ -71,7 +71,7 @@ pub fn render_preview_with_data_svg(
     data_json: &str,
     font_data: &Array,
 ) -> Result<Array, JsValue> {
-    let blocks: Vec<FrontendTopLevel> = serde_json::from_str(blocks_json)
+    let mut blocks: Vec<FrontendTopLevel> = serde_json::from_str(blocks_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse blocks: {e}")))?;
 
     let stylesheet: Option<StylesheetDef> = if stylesheet_json.trim().is_empty() {
@@ -91,10 +91,13 @@ pub fn render_preview_with_data_svg(
         .map(|i| Uint8Array::new(&font_data.get(i)).to_vec())
         .collect();
 
+    let augmented_payload =
+        crate::frontend_model::evaluate_and_apply_expressions(&mut blocks, &payload);
+
     let model = map_to_block_model(blocks);
     let source = crate::compile(&model, stylesheet.as_ref());
 
-    let pages = crate::render_svg_with_fonts(&source, &payload, &fonts)
+    let pages = crate::render_svg_with_fonts(&source, &augmented_payload, &fonts)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let result = Array::new();

@@ -194,6 +194,8 @@ function ptChildToPm(child: PtChild): PmNode | null {
         key: child._key,
         display_name: child.display_name ?? null,
         field_path: child.field_path ?? null,
+        expression: child.expression ?? null,
+        expression_label: child.expression_label ?? null,
       },
     };
   }
@@ -381,6 +383,8 @@ function pmNodeToPtChild(node: PmNode): PtChild | null {
       label: (node.attrs?.label as string) ?? "",
       display_name: (node.attrs?.display_name as string | null) ?? undefined,
       field_path: (node.attrs?.field_path as string | null) ?? undefined,
+      expression: (node.attrs?.expression as string | null) ?? undefined,
+      expression_label: (node.attrs?.expression_label as string | null) ?? undefined,
     } satisfies PtFieldIntent;
   }
   if (node.type === "text" && node.text) {

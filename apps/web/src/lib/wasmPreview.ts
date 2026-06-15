@@ -7,11 +7,7 @@ let modulePromise: Promise<WasmModule> | null = null;
 
 async function getModule(): Promise<WasmModule> {
   if (!modulePromise) {
-    modulePromise = import("typst-compiler").then(async (mod) => {
-      // --target web requires explicit init before any exports are usable
-      await mod.default();
-      return mod;
-    });
+    modulePromise = import("typst-compiler");
   }
   return modulePromise;
 }

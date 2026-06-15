@@ -137,6 +137,8 @@ export interface PtFieldIntent {
   label: string;
   display_name?: string;
   field_path?: string;
+  expression?: string;
+  expression_label?: string;
 }
 
 // ── Schema types ──────────────────────────────────────────────────────────────

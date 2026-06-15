@@ -3,66 +3,6 @@ use uuid::Uuid;
 
 use crate::AppState;
 
-fn evaluate_expressions(
-    entries: &[typst_compiler::frontend_model::ExpressionEntry],
-    payload: &serde_json::Value,
-) -> anyhow::Result<serde_json::Value> {
-    if entries.is_empty() {
-        return Ok(payload.clone());
-    }
-
-    let parser = liquid::ParserBuilder::with_stdlib()
-        .build()
-        .map_err(|e| anyhow::anyhow!("Liquid parser init failed: {e}"))?;
-
-    let globals = json_to_liquid_object(payload);
-
-    let mut augmented = payload.clone();
-    for entry in entries {
-        let tmpl_str = format!("{{{{ {} }}}}", entry.expression);
-        let tmpl = parser
-            .parse(&tmpl_str)
-            .map_err(|e| anyhow::anyhow!("Invalid expression '{}': {e}", entry.expression))?;
-        let result = tmpl
-            .render(&globals)
-            .map_err(|e| anyhow::anyhow!("Expression '{}' failed: {e}", entry.expression))?;
-        if let serde_json::Value::Object(ref mut map) = augmented {
-            map.insert(entry.placeholder.clone(), serde_json::Value::String(result));
-        }
-    }
-
-    Ok(augmented)
-}
-
-fn json_to_liquid_object(v: &serde_json::Value) -> liquid::Object {
-    if let serde_json::Value::Object(map) = v {
-        map.iter()
-            .map(|(k, v)| (k.clone().into(), json_to_liquid_value(v)))
-            .collect()
-    } else {
-        liquid::Object::new()
-    }
-}
-
-fn json_to_liquid_value(v: &serde_json::Value) -> liquid::model::Value {
-    match v {
-        serde_json::Value::Null => liquid::model::Value::Nil,
-        serde_json::Value::Bool(b) => liquid::model::Value::scalar(*b),
-        serde_json::Value::Number(n) => n
-            .as_f64()
-            .map(liquid::model::Value::scalar)
-            .unwrap_or(liquid::model::Value::Nil),
-        serde_json::Value::String(s) => liquid::model::Value::scalar(s.clone()),
-        serde_json::Value::Array(arr) => {
-            liquid::model::Value::Array(arr.iter().map(json_to_liquid_value).collect())
-        }
-        serde_json::Value::Object(obj) => liquid::model::Value::Object(
-            obj.iter()
-                .map(|(k, v)| (k.clone().into(), json_to_liquid_value(v)))
-                .collect(),
-        ),
-    }
-}
 
 pub async fn run_render_item(state: AppState, job_item_id: Uuid) {
     if let Err(e) = try_run_render_item(&state, job_item_id).await {
@@ -128,9 +68,8 @@ async fn try_run_render_item(state: &AppState, job_item_id: Uuid) -> anyhow::Res
     let stylesheet: Option<typst_compiler::model::StylesheetDef> =
         serde_json::from_value(stylesheet_json).ok();
 
-    let entries = typst_compiler::frontend_model::collect_expression_entries(&blocks);
-    let augmented_payload = evaluate_expressions(&entries, &payload)?;
-    typst_compiler::frontend_model::apply_expression_entries(&mut blocks, &entries);
+    let augmented_payload =
+        typst_compiler::frontend_model::evaluate_and_apply_expressions(&mut blocks, &payload);
 
     let block_model = typst_compiler::frontend_model::map_to_block_model(blocks);
     let source = typst_compiler::compile(&block_model, stylesheet.as_ref());

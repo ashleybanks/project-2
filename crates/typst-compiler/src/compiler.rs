@@ -128,6 +128,11 @@ pub fn compile_pt_block(block: &PtBlock, loop_vars: &[&str]) -> String {
     }
 }
 
+/// Indigo used to mark merge field values inline, matching the editor chip's
+/// `text-indigo-700`. Coloring the actual glyphs (rather than an overlay box)
+/// stays correct even when a field's value wraps across multiple lines.
+const FIELD_VALUE_COLOUR: &str = "#4338ca";
+
 pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str]) -> String {
     match child {
         PtChild::Span(span) => compile_span(span),
@@ -135,10 +140,29 @@ pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str]) -> String {
             // If the first path segment is a loop variable in scope, reference
             // it directly (e.g. `item.description`) rather than via `data.`
             let first = mf.field.split('.').next().unwrap_or("");
-            if loop_vars.contains(&first) {
+            let field_ref = if loop_vars.contains(&first) {
                 format!("#{}", mf.field)
             } else {
                 format!("#data.{}", mf.field)
+            };
+            let coloured = format!(
+                "#text(fill: rgb(\"{FIELD_VALUE_COLOUR}\"))[{field_ref}]"
+            );
+            match &mf.intent_key {
+                // Position and size are tracked separately:
+                // - Position: label the visible content block directly so
+                //   the renderer can find its on-page anchor via the
+                //   introspector. (A zero-width metadata mark placed in a
+                //   `#context` block ahead of the value was tried first, but
+                //   its resolved Tag position lagged behind the actual text
+                //   when preceded by other inline content on the same line.)
+                // - Size: a separate, unlabelled metadata mark carries this
+                //   field's `measure()`d width/height, found by element type
+                //   and matched back to the position by `key`.
+                Some(key) => format!(
+                    "#context {{ let __fi = measure([{coloured}]); metadata((key: \"{key}\", w: __fi.width.pt(), h: __fi.height.pt())) }}#[{coloured}]<{key}>"
+                ),
+                None => coloured,
             }
         }
     }
@@ -257,14 +281,29 @@ mod tests {
 
     #[test]
     fn merge_field_top_level() {
-        let child = PtChild::MergeField(PtMergeField { field: "invoice.total".into() });
-        assert_eq!(compile_pt_inline(&child, &[]), "#data.invoice.total");
+        let child = PtChild::MergeField(PtMergeField { field: "invoice.total".into(), intent_key: None });
+        let out = compile_pt_inline(&child, &[]);
+        assert!(out.contains("#data.invoice.total"), "got: {out}");
+        assert!(out.contains("text(fill: rgb(\"#4338ca\"))"), "expected coloured value, got: {out}");
     }
 
     #[test]
     fn merge_field_in_loop() {
-        let child = PtChild::MergeField(PtMergeField { field: "item.description".into() });
-        assert_eq!(compile_pt_inline(&child, &["item"]), "#item.description");
+        let child = PtChild::MergeField(PtMergeField { field: "item.description".into(), intent_key: None });
+        let out = compile_pt_inline(&child, &["item"]);
+        assert!(out.contains("#item.description"), "got: {out}");
+    }
+
+    #[test]
+    fn merge_field_with_intent_key_is_labelled() {
+        let child = PtChild::MergeField(PtMergeField {
+            field: "invoice.total".into(),
+            intent_key: Some("fi-0".into()),
+        });
+        let out = compile_pt_inline(&child, &[]);
+        assert!(out.contains("key: \"fi-0\""), "expected key in metadata, got: {out}");
+        assert!(out.contains("measure("), "expected size measurement, got: {out}");
+        assert!(out.contains("#data.invoice.total"), "expected field ref, got: {out}");
     }
 
     #[test]

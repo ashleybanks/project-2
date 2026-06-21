@@ -109,6 +109,11 @@ pub struct PtSpan {
 #[derive(Debug, Deserialize)]
 pub struct PtMergeField {
     pub field: String,
+    /// Stable label (e.g. `"fi-3"`) assigned during frontend mapping so the
+    /// compiled Typst source can attach `<fi-3>` and the renderer can later
+    /// look up this field's on-page position via Typst's introspector.
+    #[serde(default)]
+    pub intent_key: Option<String>,
 }
 
 // ── Condition tree ─────────────────────────────────────────────────────────────
@@ -160,6 +165,7 @@ pub fn spike_model() -> BlockModel {
                         }),
                         PtChild::MergeField(PtMergeField {
                             field: "invoice.number".into(),
+                            intent_key: None,
                         }),
                     ],
                 }],
@@ -176,6 +182,7 @@ pub fn spike_model() -> BlockModel {
                         children: vec![
                             PtChild::MergeField(PtMergeField {
                                 field: "item.description".into(),
+                                intent_key: None,
                             }),
                             PtChild::Span(PtSpan {
                                 text: ": £".into(),
@@ -183,6 +190,7 @@ pub fn spike_model() -> BlockModel {
                             }),
                             PtChild::MergeField(PtMergeField {
                                 field: "item.unit_price".into(),
+                                intent_key: None,
                             }),
                         ],
                     }],

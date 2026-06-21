@@ -1,4 +1,10 @@
-import type { PtTopLevel, StylesheetDef } from "./api";
+import type {
+  PtBlock,
+  PtFieldIntent,
+  PtTable,
+  PtTopLevel,
+  StylesheetDef,
+} from "./api";
 import { FONTS } from "./fonts";
 
 type WasmModule = typeof import("typst-compiler");
@@ -145,4 +151,95 @@ export async function renderPreviewWithDataSvg(
     JSON.stringify(payload),
     fontArrays,
   ) as string[];
+}
+
+// ── Field intent chip overlay positions ────────────────────────────────────────
+
+export interface FieldIntentPosition {
+  key: string;
+  page: number;
+  x_pt: number;
+  y_pt: number;
+  w_pt: number;
+  h_pt: number;
+}
+
+interface PreviewWithPositions {
+  pages: string[];
+  positions: FieldIntentPosition[];
+}
+
+/**
+ * Same as `renderPreviewWithDataSvg`, but also returns the on-page position of
+ * every field-intent chip, keyed `fi-0`, `fi-1`, ... in the same depth-first
+ * order as `collectFieldIntents` below — that order must match the Rust
+ * compiler's `map_to_block_model` walk so chip N here is field intent N there.
+ */
+export async function renderPreviewWithDataSvgPositions(
+  blocks: PtTopLevel[],
+  stylesheet: StylesheetDef,
+  payload: object,
+): Promise<PreviewWithPositions> {
+  const wasm = await getModule();
+  const fontArrays = await resolveFonts(stylesheet);
+  const json = wasm.render_preview_with_data_svg_positions(
+    JSON.stringify(blocks),
+    JSON.stringify(stylesheet),
+    JSON.stringify(payload),
+    fontArrays,
+  ) as string;
+  return JSON.parse(json) as PreviewWithPositions;
+}
+
+/**
+ * Walk `blocks` depth-first and return every field intent that resolved to a
+ * MergeField (i.e. has a `field_path` or an `expression`), in the same order
+ * the Rust compiler assigns `fi-N` labels in `map_to_block_model`. The Nth
+ * entry here corresponds to label `fi-N`.
+ */
+export function collectFieldIntents(blocks: PtTopLevel[]): PtFieldIntent[] {
+  const out: PtFieldIntent[] = [];
+
+  function walkBlock(b: PtBlock) {
+    for (const child of b.children) {
+      if (
+        child._type === "fieldIntent" &&
+        (child.field_path || child.expression)
+      ) {
+        out.push(child);
+      }
+    }
+  }
+
+  function walkTable(t: PtTable) {
+    for (const row of t.rows) {
+      for (const cell of row.cells) {
+        for (const b of cell.content) walkBlock(b);
+      }
+    }
+  }
+
+  function walkTopLevel(entries: PtTopLevel[]) {
+    for (const entry of entries) {
+      if (entry._type === "block") walkBlock(entry);
+      else if (entry._type === "section") {
+        for (const e of entry.content) {
+          if (e._type === "block") walkBlock(e);
+          else walkTable(e);
+        }
+      } else if (entry._type === "table") walkTable(entry);
+    }
+  }
+
+  walkTopLevel(blocks);
+  return out;
+}
+
+/** Parse `width`/`height` (in pt) from an SVG string's `viewBox` attribute. */
+export function parseSvgPageSize(
+  svg: string,
+): { widthPt: number; heightPt: number } | null {
+  const match = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!match) return null;
+  return { widthPt: parseFloat(match[1]), heightPt: parseFloat(match[2]) };
 }

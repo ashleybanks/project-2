@@ -89,66 +89,69 @@ pub struct FrontendDerivedFieldIntent {
 // ── Mapping ───────────────────────────────────────────────────────────────────
 
 pub fn map_to_block_model(blocks: Vec<FrontendTopLevel>) -> BlockModel {
+    let mut idx = 0usize;
     BlockModel {
-        blocks: blocks.into_iter().flat_map(map_top_level).collect(),
+        blocks: blocks.into_iter().flat_map(|b| map_top_level(b, &mut idx)).collect(),
     }
 }
 
-fn map_top_level(entry: FrontendTopLevel) -> Vec<Block> {
+fn map_top_level(entry: FrontendTopLevel, idx: &mut usize) -> Vec<Block> {
     match entry {
         FrontendTopLevel::Block(b) => vec![Block::Text(TextBlock {
             style_class: None,
-            content: vec![map_frontend_block(b)],
+            content: vec![map_frontend_block(b, idx)],
         })],
         // Sections with unresolved intents: render content naively, ignoring the condition/repeat
         FrontendTopLevel::Section(s) => {
-            s.content.into_iter().flat_map(map_top_level).collect()
+            s.content.into_iter().flat_map(|b| map_top_level(b, idx)).collect()
         }
-        FrontendTopLevel::Table(t) => vec![Block::Table(map_frontend_table(t))],
+        FrontendTopLevel::Table(t) => vec![Block::Table(map_frontend_table(t, idx))],
     }
 }
 
-fn map_frontend_block(b: FrontendBlock) -> ModelPtBlock {
+fn map_frontend_block(b: FrontendBlock, idx: &mut usize) -> ModelPtBlock {
     ModelPtBlock {
         block_type: "block".into(),
         style: Some(b.style),
-        children: b.children.into_iter().filter_map(map_child).collect(),
+        children: b.children.into_iter().filter_map(|c| map_child(c, idx)).collect(),
         list_item: b.list_item,
         level: b.level,
     }
 }
 
-fn map_frontend_table(t: FrontendTable) -> TableBlock {
+fn map_frontend_table(t: FrontendTable, idx: &mut usize) -> TableBlock {
     TableBlock {
         rows: t.rows.into_iter().map(|row| {
             let is_header = row.cells.first().map(|c| c.is_header).unwrap_or(false);
             TableRow {
                 is_header,
                 cells: row.cells.into_iter().map(|cell| TableCell {
-                    content: cell.content.into_iter().map(map_frontend_block).collect(),
+                    content: cell.content.into_iter().map(|b| map_frontend_block(b, idx)).collect(),
                 }).collect(),
             }
         }).collect(),
     }
 }
 
-fn map_child(child: FrontendChild) -> Option<PtChild> {
+fn map_child(child: FrontendChild, idx: &mut usize) -> Option<PtChild> {
     match child {
         FrontendChild::Span(s) => Some(PtChild::Span(PtSpan {
             text: s.text,
             marks: s.marks,
         })),
         FrontendChild::FieldIntent(fi) => {
-            if fi.expression.is_some() {
-                // Expression set: emit a placeholder; server-side eval replaces it at render time.
-                // For WASM preview, fall through to the raw field_path render.
-                if let Some(path) = fi.field_path {
-                    Some(PtChild::MergeField(crate::model::PtMergeField { field: path }))
-                } else {
-                    Some(PtChild::Span(PtSpan { text: fi.label, marks: vec![] }))
-                }
-            } else if let Some(path) = fi.field_path {
-                Some(PtChild::MergeField(crate::model::PtMergeField { field: path }))
+            // By this point expression-bearing intents have already had their
+            // `field_path` swapped to a placeholder by `apply_expression_entries`,
+            // so both branches below emit a MergeField the same way. Every
+            // resolved MergeField gets a stable `fi-N` label for SVG overlay
+            // position lookup (see `compiler::compile_intent_index`).
+            if let Some(path) = fi.field_path {
+                let key = format!("fi-{idx}");
+                *idx += 1;
+                Some(PtChild::MergeField(crate::model::PtMergeField {
+                    field: path,
+                    intent_key: Some(key),
+                }))
             } else {
                 // Unresolved intent: render the label as plain text so it's visible
                 Some(PtChild::Span(PtSpan { text: fi.label, marks: vec![] }))

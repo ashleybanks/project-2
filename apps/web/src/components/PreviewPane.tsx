@@ -1,7 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { renderPreviewSvg, renderPreviewWithDataSvg } from "@/lib/wasmPreview";
-import type { PtTopLevel, StylesheetDef, JobDetail } from "@/lib/api";
+import {
+  renderPreviewSvg,
+  renderPreviewWithDataSvgPositions,
+  collectFieldIntents,
+  parseSvgPageSize,
+} from "@/lib/wasmPreview";
+import type { FieldIntentPosition } from "@/lib/wasmPreview";
+import type {
+  PtFieldIntent,
+  PtTopLevel,
+  StylesheetDef,
+  JobDetail,
+} from "@/lib/api";
 import {
   listTemplateJobs,
   getJobDetail,
@@ -20,7 +31,7 @@ interface Props {
 type RenderState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; pages: string[] }
+  | { status: "ready"; pages: string[]; positions: FieldIntentPosition[] }
   | { status: "error"; message: string };
 
 type ViewMode = "fields" | "data";
@@ -32,7 +43,10 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("data");
+  const [activeChipKey, setActiveChipKey] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fieldIntents = useMemo(() => collectFieldIntents(blocks), [blocks]);
 
   // Fetch all jobs to find the active one
   const { data: jobs } = useQuery({
@@ -85,11 +99,17 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
     setRenderState({ status: "loading" });
     try {
       const payload = currentItem?.payload ?? null;
-      const pages =
-        payload != null
-          ? await renderPreviewWithDataSvg(blocks, stylesheet, payload)
-          : await renderPreviewSvg(blocks, stylesheet);
-      setRenderState({ status: "ready", pages });
+      if (payload != null) {
+        const { pages, positions } = await renderPreviewWithDataSvgPositions(
+          blocks,
+          stylesheet,
+          payload,
+        );
+        setRenderState({ status: "ready", pages, positions });
+      } else {
+        const pages = await renderPreviewSvg(blocks, stylesheet);
+        setRenderState({ status: "ready", pages, positions: [] });
+      }
     } catch (err) {
       setRenderState({
         status: "error",
@@ -97,6 +117,10 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
       });
     }
   }
+
+  useEffect(() => {
+    setActiveChipKey(null);
+  }, [viewMode, selectedIndex]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -223,19 +247,125 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
 
         {renderState.status === "ready" && (
           <div className="flex flex-col items-center gap-6 py-8 px-4">
-            {renderState.pages.map((svg, i) => (
-              <div
-                key={i}
-                className="shadow-md rounded bg-white w-full max-w-2xl overflow-hidden [&>svg]:w-full [&>svg]:h-auto"
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{
-                  __html: svg,
-                }}
-              />
-            ))}
+            {renderState.pages.map((svg, i) => {
+              const pageSize = parseSvgPageSize(svg);
+              const pagePositions = renderState.positions.filter(
+                (p) => p.page === i + 1,
+              );
+              return (
+                <div
+                  key={i}
+                  className="relative shadow-md rounded bg-white w-full max-w-2xl overflow-hidden"
+                  style={
+                    pageSize
+                      ? {
+                          aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}`,
+                        }
+                      : undefined
+                  }
+                >
+                  <div
+                    className="absolute inset-0 z-0 [&>svg]:w-full [&>svg]:h-full"
+                    // eslint-disable-next-line react/no-danger
+                    dangerouslySetInnerHTML={{ __html: svg }}
+                  />
+
+                  {viewMode === "fields" &&
+                    pageSize &&
+                    pagePositions.map((pos) => {
+                      const idx = Number(pos.key.split("-")[1]);
+                      const intent = fieldIntents[idx];
+                      if (!intent) return null;
+                      // The rendered text itself is already coloured indigo
+                      // (see compiler.rs) — this box is just the click
+                      // target, so keep it subtle rather than redrawing a
+                      // second strong highlight on top.
+                      const leftPct = (pos.x_pt / pageSize.widthPt) * 100;
+                      const topPct = (pos.y_pt / pageSize.heightPt) * 100;
+                      const widthPct = (pos.w_pt / pageSize.widthPt) * 100;
+                      const heightPct = (pos.h_pt / pageSize.heightPt) * 100;
+                      const isActive = activeChipKey === pos.key;
+                      return (
+                        <div
+                          key={pos.key}
+                          className="absolute z-10"
+                          style={{
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: `${widthPct}%`,
+                            height: `${heightPct}%`,
+                          }}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveChipKey(isActive ? null : pos.key);
+                            }}
+                            className={`absolute -inset-1 rounded-sm border transition-colors ${
+                              isActive
+                                ? "bg-primary/15 border-primary"
+                                : "bg-primary/5 border-primary/30 hover:bg-primary/10 hover:border-primary"
+                            }`}
+                            title={intent.display_name || intent.label}
+                          />
+
+                          {isActive && (
+                            <FieldIntentChipPopover
+                              intent={intent}
+                              onClose={() => setActiveChipKey(null)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// ── Field intent chip popover ────────────────────────────────────────────────
+// Read-only summary for a chip in the Preview tab's Fields-mode overlay.
+// Editing an intent happens in the Design tab's BlockCanvas; this just shows
+// what's behind the chip for the currently-selected record.
+
+function FieldIntentChipPopover({
+  intent,
+  onClose,
+}: {
+  intent: PtFieldIntent;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-border bg-white p-2.5 text-xs shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-medium text-foreground">
+          {intent.display_name || intent.label}
+        </p>
+        {intent.field_path && (
+          <p className="mt-1 font-mono text-muted-foreground break-all">
+            {intent.field_path}
+          </p>
+        )}
+        {intent.expression && (
+          <div className="mt-1.5 border-t border-border pt-1.5">
+            <span className="font-mono text-primary break-all">
+              {intent.expression_label ?? intent.expression}
+            </span>
+            <p className="mt-0.5 text-muted-foreground">
+              Format applied in generated PDF
+            </p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

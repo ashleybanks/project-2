@@ -384,7 +384,8 @@ function pmNodeToPtChild(node: PmNode): PtChild | null {
       display_name: (node.attrs?.display_name as string | null) ?? undefined,
       field_path: (node.attrs?.field_path as string | null) ?? undefined,
       expression: (node.attrs?.expression as string | null) ?? undefined,
-      expression_label: (node.attrs?.expression_label as string | null) ?? undefined,
+      expression_label:
+        (node.attrs?.expression_label as string | null) ?? undefined,
     } satisfies PtFieldIntent;
   }
   if (node.type === "text" && node.text) {

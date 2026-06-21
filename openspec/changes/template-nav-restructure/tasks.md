@@ -78,7 +78,7 @@
 
 - [x] 7.4 Add Fields/Data toggle to the `PreviewPane` toolbar: in Fields mode show the SVG with an overlay layer (populated in task 7.5); in Data mode hide the overlay; toggle is instant (no WASM re-render). **AC:** toggle switches instantly; no WASM call is triggered on toggle.
 
-- [ ] 7.5 Implement the intent chip overlay layer in Fields mode: after SVG render, parse the returned SVG to locate field intent elements (by a data attribute or element ID set during Typst compilation); position overlay chips absolutely over the SVG using the element bounding boxes; clicking a chip opens an intent popover. **Note: this task requires a spike to determine how Typst SVG identifies intent positions — may need a custom Typst marker approach.** **AC:** at least one intent chip renders over its correct position in the SVG.
+- [x] 7.5 Implement the intent chip overlay layer in Fields mode: after SVG render, parse the returned SVG to locate field intent elements (by a data attribute or element ID set during Typst compilation); position overlay chips absolutely over the SVG using the element bounding boxes; clicking a chip opens an intent popover. **Note: this task requires a spike to determine how Typst SVG identifies intent positions — may need a custom Typst marker approach.** **AC:** at least one intent chip renders over its correct position in the SVG.
 
 - [x] 7.6 Add Generate CTAs to the `PreviewPane` toolbar: "Generate this record" (calls `POST /api/jobs/{id}/items/{item_id}/submit` for the current record) and "Generate all" (calls `POST /api/jobs/{id}/submit`); both disabled when all items already submitted. **AC:** Generate this record submits only the current item; Generate all submits all; buttons disable correctly.
 
@@ -94,4 +94,4 @@
 
 - [x] 9.2 Add the backend endpoint `POST /api/templates/{id}/intents/resolve-expression`: accept `{ field_path, field_type, description }`, call Qwen3-8B (no_think) to generate a Liquid expression, validate the output is syntactically valid Liquid, return `{ expression, expression_label }`. Return 422 if the LLM output is not valid Liquid. **AC:** valid natural language descriptions return a Liquid expression; invalid/unparseable LLM output returns 422.
 
-- [ ] 9.3 Show the `ƒ` indicator and raw value hint in the Preview tab overlay: when a field intent chip in the SVG overlay has `expression` set, render the chip with a `ƒ` suffix; in Data mode, show the raw field value with a `ƒ` indicator and a tooltip "Format applied in generated PDF". **AC:** chips with expressions display `ƒ`; tooltip is shown in Data mode.
+- [x] 9.3 Show the `ƒ` indicator and raw value hint in the Preview tab overlay: when a field intent chip in the SVG overlay has `expression` set, render the chip with a `ƒ` suffix; in Data mode, show the raw field value with a `ƒ` indicator and a tooltip "Format applied in generated PDF". **AC:** chips with expressions display `ƒ`; tooltip is shown in Data mode.

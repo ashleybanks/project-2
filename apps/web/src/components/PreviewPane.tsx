@@ -5,6 +5,7 @@ import {
   renderPreviewWithDataSvgPositions,
   collectFieldIntents,
   parseSvgPageSize,
+  getByPath,
 } from "@/lib/wasmPreview";
 import type { FieldIntentPosition } from "@/lib/wasmPreview";
 import type {
@@ -119,10 +120,6 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
   }
 
   useEffect(() => {
-    setActiveChipKey(null);
-  }, [viewMode, selectedIndex]);
-
-  useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(runRender, 400);
     return () => {
@@ -132,10 +129,16 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
   }, [blocks, stylesheet, currentItem]);
 
   function handlePrev() {
-    if (selectedIndex > 0) setSelectedIndex((i) => i - 1);
+    if (selectedIndex > 0) {
+      setSelectedIndex((i) => i - 1);
+      setActiveChipKey(null);
+    }
   }
   function handleNext() {
-    if (selectedIndex < totalItems - 1) setSelectedIndex((i) => i + 1);
+    if (selectedIndex < totalItems - 1) {
+      setSelectedIndex((i) => i + 1);
+      setActiveChipKey(null);
+    }
   }
 
   return (
@@ -147,7 +150,10 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
           {(["data", "fields"] as const).map((m, i) => (
             <button
               key={m}
-              onClick={() => setViewMode(m)}
+              onClick={() => {
+                setViewMode(m);
+                setActiveChipKey(null);
+              }}
               className={`px-2.5 h-7 font-medium transition-colors ${
                 viewMode === m
                   ? "bg-primary text-primary-foreground"
@@ -309,12 +315,54 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
                             title={intent.display_name || intent.label}
                           />
 
+                          {intent.expression && (
+                            <span
+                              className="absolute -top-1.5 -right-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] font-semibold leading-none text-primary-foreground"
+                              title="Format applied in generated PDF"
+                            >
+                              ƒ
+                            </span>
+                          )}
+
                           {isActive && (
                             <FieldIntentChipPopover
                               intent={intent}
                               onClose={() => setActiveChipKey(null)}
                             />
                           )}
+                        </div>
+                      );
+                    })}
+
+                  {viewMode === "data" &&
+                    pageSize &&
+                    pagePositions.map((pos) => {
+                      const idx = Number(pos.key.split("-")[1]);
+                      const intent = fieldIntents[idx];
+                      if (!intent || !intent.expression || !intent.field_path)
+                        return null;
+                      const rawValue = currentItem?.payload
+                        ? getByPath(currentItem.payload, intent.field_path)
+                        : undefined;
+                      const leftPct = (pos.x_pt / pageSize.widthPt) * 100;
+                      const topPct = (pos.y_pt / pageSize.heightPt) * 100;
+                      const widthPct = (pos.w_pt / pageSize.widthPt) * 100;
+                      return (
+                        <div
+                          key={pos.key}
+                          className="absolute z-10"
+                          style={{
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: `${widthPct}%`,
+                          }}
+                        >
+                          <span
+                            className="absolute -top-1.5 -right-1.5 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-primary text-[8px] font-semibold leading-none text-primary-foreground"
+                            title={`Raw value: ${rawValue == null ? "—" : String(rawValue)} — Format applied in generated PDF`}
+                          >
+                            ƒ
+                          </span>
                         </div>
                       );
                     })}

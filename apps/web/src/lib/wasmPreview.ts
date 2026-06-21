@@ -235,6 +235,23 @@ export function collectFieldIntents(blocks: PtTopLevel[]): PtFieldIntent[] {
   return out;
 }
 
+/**
+ * Look up a dot-separated path (e.g. `"invoice.due_date"`) in a JSON payload.
+ * Used to show the raw, unformatted value behind an expression-bearing field
+ * in the Preview tab's Data mode.
+ */
+export function getByPath(
+  payload: Record<string, unknown>,
+  path: string,
+): unknown {
+  let current: unknown = payload;
+  for (const segment of path.split(".")) {
+    if (current == null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
 /** Parse `width`/`height` (in pt) from an SVG string's `viewBox` attribute. */
 export function parseSvgPageSize(
   svg: string,

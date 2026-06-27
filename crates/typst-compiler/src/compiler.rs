@@ -1,8 +1,8 @@
 use crate::model::*;
 
-pub fn compile(model: &BlockModel, stylesheet: Option<&StylesheetDef>) -> String {
+pub fn compile(model: &BlockModel, stylesheet: Option<&StylesheetDef>, highlight_fields: bool) -> String {
     let preamble = preamble(stylesheet);
-    let content = compile_blocks(&model.blocks, &[]);
+    let content = compile_blocks(&model.blocks, &[], highlight_fields);
     format!("#let data = json(\"data.json\")\n\n{preamble}\n\n{content}")
 }
 
@@ -44,24 +44,24 @@ fn preamble(stylesheet: Option<&StylesheetDef>) -> String {
     lines.join("\n")
 }
 
-fn compile_blocks(blocks: &[Block], loop_vars: &[&str]) -> String {
+fn compile_blocks(blocks: &[Block], loop_vars: &[&str], highlight_fields: bool) -> String {
     blocks
         .iter()
-        .map(|b| compile_block(b, loop_vars))
+        .map(|b| compile_block(b, loop_vars, highlight_fields))
         .collect::<Vec<_>>()
         .join("\n\n")
 }
 
-pub fn compile_block(block: &Block, loop_vars: &[&str]) -> String {
+pub fn compile_block(block: &Block, loop_vars: &[&str], highlight_fields: bool) -> String {
     match block {
-        Block::Text(b) => compile_text_block(b, loop_vars),
-        Block::Repeating(b) => compile_repeating_block(b, loop_vars),
-        Block::Conditional(b) => compile_conditional_block(b, loop_vars),
-        Block::Table(b) => compile_table_block(b),
+        Block::Text(b) => compile_text_block(b, loop_vars, highlight_fields),
+        Block::Repeating(b) => compile_repeating_block(b, loop_vars, highlight_fields),
+        Block::Conditional(b) => compile_conditional_block(b, loop_vars, highlight_fields),
+        Block::Table(b) => compile_table_block(b, highlight_fields),
     }
 }
 
-fn compile_table_block(block: &crate::model::TableBlock) -> String {
+fn compile_table_block(block: &crate::model::TableBlock, highlight_fields: bool) -> String {
     let cols = block.rows.first().map(|r| r.cells.len()).unwrap_or(1);
     let cols_spec = vec!["1fr"; cols].join(", ");
     let header_rows = block.rows.iter().filter(|r| r.is_header).count();
@@ -75,7 +75,7 @@ fn compile_table_block(block: &crate::model::TableBlock) -> String {
     let rows: Vec<String> = block.rows.iter().map(|row| {
         let cells: Vec<String> = row.cells.iter().map(|cell| {
             let content = cell.content.iter()
-                .map(|b| compile_pt_block(b, &[]))
+                .map(|b| compile_pt_block(b, &[], highlight_fields))
                 .collect::<Vec<_>>()
                 .join(" ");
             if row.is_header {
@@ -97,20 +97,20 @@ fn compile_table_block(block: &crate::model::TableBlock) -> String {
     )
 }
 
-fn compile_text_block(block: &TextBlock, loop_vars: &[&str]) -> String {
+fn compile_text_block(block: &TextBlock, loop_vars: &[&str], highlight_fields: bool) -> String {
     block
         .content
         .iter()
-        .map(|pt| compile_pt_block(pt, loop_vars))
+        .map(|pt| compile_pt_block(pt, loop_vars, highlight_fields))
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-pub fn compile_pt_block(block: &PtBlock, loop_vars: &[&str]) -> String {
+pub fn compile_pt_block(block: &PtBlock, loop_vars: &[&str], highlight_fields: bool) -> String {
     let inline = block
         .children
         .iter()
-        .map(|c| compile_pt_inline(c, loop_vars))
+        .map(|c| compile_pt_inline(c, loop_vars, highlight_fields))
         .collect::<String>();
 
     if let Some(list_item) = &block.list_item {
@@ -128,12 +128,9 @@ pub fn compile_pt_block(block: &PtBlock, loop_vars: &[&str]) -> String {
     }
 }
 
-/// Indigo used to mark merge field values inline, matching the editor chip's
-/// `text-indigo-700`. Coloring the actual glyphs (rather than an overlay box)
-/// stays correct even when a field's value wraps across multiple lines.
 const FIELD_VALUE_COLOUR: &str = "#4338ca";
 
-pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str]) -> String {
+pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str], highlight_fields: bool) -> String {
     match child {
         PtChild::Span(span) => compile_span(span),
         PtChild::MergeField(mf) => {
@@ -145,9 +142,11 @@ pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str]) -> String {
             } else {
                 format!("#data.{}", mf.field)
             };
-            let coloured = format!(
-                "#text(fill: rgb(\"{FIELD_VALUE_COLOUR}\"))[{field_ref}]"
-            );
+            let inner = if highlight_fields {
+                format!("#text(fill: rgb(\"{FIELD_VALUE_COLOUR}\"))[{field_ref}]")
+            } else {
+                field_ref
+            };
             match &mf.intent_key {
                 // Position and size are tracked separately:
                 // - Position: label the visible content block directly so
@@ -160,9 +159,9 @@ pub fn compile_pt_inline(child: &PtChild, loop_vars: &[&str]) -> String {
                 //   field's `measure()`d width/height, found by element type
                 //   and matched back to the position by `key`.
                 Some(key) => format!(
-                    "#context {{ let __fi = measure([{coloured}]); metadata((key: \"{key}\", w: __fi.width.pt(), h: __fi.height.pt())) }}#[{coloured}]<{key}>"
+                    "#context {{ let __fi = measure([{inner}]); metadata((key: \"{key}\", w: __fi.width.pt(), h: __fi.height.pt())) }}#[{inner}]<{key}>"
                 ),
-                None => coloured,
+                None => inner,
             }
         }
     }
@@ -180,7 +179,7 @@ fn compile_span(span: &PtSpan) -> String {
     }
 }
 
-fn compile_repeating_block(block: &RepeatingBlock, loop_vars: &[&str]) -> String {
+fn compile_repeating_block(block: &RepeatingBlock, loop_vars: &[&str], highlight_fields: bool) -> String {
     let field = &block.field;
     let item_var = field.split('.').last().unwrap_or("item");
     let item_var = item_var.strip_suffix('s').unwrap_or(item_var);
@@ -189,10 +188,10 @@ fn compile_repeating_block(block: &RepeatingBlock, loop_vars: &[&str]) -> String
     let mut child_vars: Vec<&str> = loop_vars.to_vec();
     child_vars.push(item_var);
 
-    let body = compile_blocks(&block.blocks, &child_vars);
+    let body = compile_blocks(&block.blocks, &child_vars, highlight_fields);
 
     if let Some(empty) = &block.empty_state {
-        let empty_body = compile_blocks(empty, loop_vars);
+        let empty_body = compile_blocks(empty, loop_vars, highlight_fields);
         format!(
             "#if data.{field}.len() > 0 [\n  #for {item_var} in data.{field} [\n{body}\n\n  ]\n] else [\n{empty_body}\n]"
         )
@@ -201,9 +200,9 @@ fn compile_repeating_block(block: &RepeatingBlock, loop_vars: &[&str]) -> String
     }
 }
 
-fn compile_conditional_block(block: &ConditionalBlock, loop_vars: &[&str]) -> String {
+fn compile_conditional_block(block: &ConditionalBlock, loop_vars: &[&str], highlight_fields: bool) -> String {
     let cond = compile_condition(&block.condition, loop_vars);
-    let body = compile_blocks(&block.blocks, loop_vars);
+    let body = compile_blocks(&block.blocks, loop_vars, highlight_fields);
     format!("#if {cond} [\n{body}\n]")
 }
 
@@ -255,19 +254,19 @@ mod tests {
     #[test]
     fn span_no_marks() {
         let child = PtChild::Span(PtSpan { text: "hello".into(), marks: vec![] });
-        assert_eq!(compile_pt_inline(&child, &[]), "hello");
+        assert_eq!(compile_pt_inline(&child, &[], false), "hello");
     }
 
     #[test]
     fn span_bold() {
         let child = PtChild::Span(PtSpan { text: "hello".into(), marks: vec!["strong".into()] });
-        assert_eq!(compile_pt_inline(&child, &[]), "*hello*");
+        assert_eq!(compile_pt_inline(&child, &[], false), "*hello*");
     }
 
     #[test]
     fn span_italic() {
         let child = PtChild::Span(PtSpan { text: "hello".into(), marks: vec!["em".into()] });
-        assert_eq!(compile_pt_inline(&child, &[]), "_hello_");
+        assert_eq!(compile_pt_inline(&child, &[], false), "_hello_");
     }
 
     #[test]
@@ -276,21 +275,24 @@ mod tests {
             text: "hello".into(),
             marks: vec!["strong".into(), "em".into()],
         });
-        assert_eq!(compile_pt_inline(&child, &[]), "*_hello_*");
+        assert_eq!(compile_pt_inline(&child, &[], false), "*_hello_*");
     }
 
     #[test]
     fn merge_field_top_level() {
         let child = PtChild::MergeField(PtMergeField { field: "invoice.total".into(), intent_key: None });
-        let out = compile_pt_inline(&child, &[]);
-        assert!(out.contains("#data.invoice.total"), "got: {out}");
-        assert!(out.contains("text(fill: rgb(\"#4338ca\"))"), "expected coloured value, got: {out}");
+        let highlighted = compile_pt_inline(&child, &[], true);
+        assert!(highlighted.contains("#data.invoice.total"), "got: {highlighted}");
+        assert!(highlighted.contains("text(fill: rgb(\"#4338ca\"))"), "expected coloured value, got: {highlighted}");
+        let plain = compile_pt_inline(&child, &[], false);
+        assert!(plain.contains("#data.invoice.total"), "got: {plain}");
+        assert!(!plain.contains("text(fill: rgb"), "should have no colour, got: {plain}");
     }
 
     #[test]
     fn merge_field_in_loop() {
         let child = PtChild::MergeField(PtMergeField { field: "item.description".into(), intent_key: None });
-        let out = compile_pt_inline(&child, &["item"]);
+        let out = compile_pt_inline(&child, &["item"], false);
         assert!(out.contains("#item.description"), "got: {out}");
     }
 
@@ -300,7 +302,7 @@ mod tests {
             field: "invoice.total".into(),
             intent_key: Some("fi-0".into()),
         });
-        let out = compile_pt_inline(&child, &[]);
+        let out = compile_pt_inline(&child, &[], true);
         assert!(out.contains("key: \"fi-0\""), "expected key in metadata, got: {out}");
         assert!(out.contains("measure("), "expected size measurement, got: {out}");
         assert!(out.contains("#data.invoice.total"), "expected field ref, got: {out}");
@@ -315,7 +317,7 @@ mod tests {
             }),
             blocks: vec![],
         };
-        let out = compile_conditional_block(&block, &[]);
+        let out = compile_conditional_block(&block, &[], false);
         assert!(out.contains("data.invoice.status == \"paid\""), "got: {out}");
     }
 
@@ -326,7 +328,7 @@ mod tests {
             blocks: vec![],
             empty_state: Some(vec![]),
         };
-        let out = compile_repeating_block(&block, &[]);
+        let out = compile_repeating_block(&block, &[], false);
         assert!(out.contains("if data.invoice.items.len() > 0"), "got: {out}");
         assert!(out.contains("else"), "got: {out}");
     }
@@ -344,7 +346,7 @@ mod tests {
     fn stylesheet_body_font_applied() {
         let s = stylesheet(Some("Helvetica"), None, None);
         let model = BlockModel { blocks: vec![] };
-        let source = compile(&model, Some(&s));
+        let source = compile(&model, Some(&s), false);
         assert!(source.contains("\"Helvetica\""), "expected body font, got:\n{source}");
     }
 
@@ -352,7 +354,7 @@ mod tests {
     fn stylesheet_heading_font_applied() {
         let s = stylesheet(None, Some("Georgia"), None);
         let model = BlockModel { blocks: vec![] };
-        let source = compile(&model, Some(&s));
+        let source = compile(&model, Some(&s), false);
         assert!(source.contains("\"Georgia\""), "expected heading font, got:\n{source}");
     }
 
@@ -360,14 +362,14 @@ mod tests {
     fn stylesheet_heading_colour_applied() {
         let s = stylesheet(None, None, Some("#1a1a2e"));
         let model = BlockModel { blocks: vec![] };
-        let source = compile(&model, Some(&s));
+        let source = compile(&model, Some(&s), false);
         assert!(source.contains("rgb(\"#1a1a2e\")"), "expected heading colour, got:\n{source}");
     }
 
     #[test]
     fn stylesheet_none_uses_defaults() {
         let model = BlockModel { blocks: vec![] };
-        let source = compile(&model, None);
+        let source = compile(&model, None, false);
         assert!(source.contains("\"New Computer Modern\""), "expected default font, got:\n{source}");
     }
 
@@ -393,19 +395,19 @@ mod tests {
 
     #[test]
     fn bullet_list_item_compiles() {
-        let out = compile_pt_block(&bullet_block("First item", 1), &[]);
+        let out = compile_pt_block(&bullet_block("First item", 1), &[], false);
         assert_eq!(out, "- First item");
     }
 
     #[test]
     fn numbered_list_item_compiles() {
-        let out = compile_pt_block(&numbered_block("Step one", 1), &[]);
+        let out = compile_pt_block(&numbered_block("Step one", 1), &[], false);
         assert_eq!(out, "+ Step one");
     }
 
     #[test]
     fn nested_bullet_list_item_indented() {
-        let out = compile_pt_block(&bullet_block("Nested", 2), &[]);
+        let out = compile_pt_block(&bullet_block("Nested", 2), &[], false);
         assert_eq!(out, "  - Nested");
     }
 
@@ -430,14 +432,14 @@ mod tests {
     #[test]
     fn table_column_count() {
         let table = make_table(false, vec![vec!["A", "B", "C"], vec!["1", "2", "3"]]);
-        let out = compile_table_block(&table);
+        let out = compile_table_block(&table, false);
         assert!(out.contains("columns: (1fr, 1fr, 1fr)"), "expected fractional columns, got:\n{out}");
     }
 
     #[test]
     fn table_header_row_wrapped() {
         let table = make_table(true, vec![vec!["Name", "Age"], vec!["Alice", "30"]]);
-        let out = compile_table_block(&table);
+        let out = compile_table_block(&table, false);
         assert!(out.contains("table.header("), "expected table.header(), got:\n{out}");
         assert!(out.contains("[Name]"), "expected [Name] cell, got:\n{out}");
         assert!(out.contains("luma(230)"), "expected header fill, got:\n{out}");
@@ -446,7 +448,7 @@ mod tests {
     #[test]
     fn table_body_cells_as_content_blocks() {
         let table = make_table(false, vec![vec!["hello", "world"]]);
-        let out = compile_table_block(&table);
+        let out = compile_table_block(&table, false);
         assert!(out.contains("[hello]"), "expected [hello], got:\n{out}");
         assert!(out.contains("[world]"), "expected [world], got:\n{out}");
     }
@@ -454,7 +456,7 @@ mod tests {
     #[test]
     fn full_spike_compile() {
         let model = crate::model::spike_model();
-        let source = compile(&model, None);
+        let source = compile(&model, None, false);
         assert!(source.contains("#let data = json(\"data.json\")"), "missing data binding");
         assert!(source.contains("Acme Corp"), "missing bold text");
         assert!(source.contains("#data.invoice.number"), "missing merge field");

@@ -142,6 +142,7 @@ export async function renderPreviewWithDataSvg(
   blocks: PtTopLevel[],
   stylesheet: StylesheetDef,
   payload: object,
+  highlightFields: boolean,
 ): Promise<string[]> {
   const wasm = await getModule();
   const fontArrays = await resolveFonts(stylesheet);
@@ -150,6 +151,7 @@ export async function renderPreviewWithDataSvg(
     JSON.stringify(stylesheet),
     JSON.stringify(payload),
     fontArrays,
+    highlightFields,
   ) as string[];
 }
 
@@ -179,6 +181,7 @@ export async function renderPreviewWithDataSvgPositions(
   blocks: PtTopLevel[],
   stylesheet: StylesheetDef,
   payload: object,
+  highlightFields: boolean,
 ): Promise<PreviewWithPositions> {
   const wasm = await getModule();
   const fontArrays = await resolveFonts(stylesheet);
@@ -187,6 +190,7 @@ export async function renderPreviewWithDataSvgPositions(
     JSON.stringify(stylesheet),
     JSON.stringify(payload),
     fontArrays,
+    highlightFields,
   ) as string;
   return JSON.parse(json) as PreviewWithPositions;
 }

@@ -72,7 +72,7 @@ async fn try_run_render_item(state: &AppState, job_item_id: Uuid) -> anyhow::Res
         typst_compiler::frontend_model::evaluate_and_apply_expressions(&mut blocks, &payload);
 
     let block_model = typst_compiler::frontend_model::map_to_block_model(blocks);
-    let source = typst_compiler::compile(&block_model, stylesheet.as_ref());
+    let source = typst_compiler::compile(&block_model, stylesheet.as_ref(), false);
 
     info!(%job_item_id, "Compiling Typst source");
     let pdf_bytes = typst_compiler::render(&source, &augmented_payload)

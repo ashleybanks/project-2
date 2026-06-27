@@ -11,6 +11,9 @@ import type {
   TemplateDetail,
   VersionSummary,
   PtTopLevel,
+  PtBlock,
+  PtSection,
+  PtSpan,
 } from "../lib/api";
 import { useEditor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
@@ -106,7 +109,9 @@ export default function RightPanel({
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
-            {tab === "map" && <DocumentMapTab editorRef={editorRef} />}
+            {tab === "map" && (
+              <DocumentMapTab editorRef={editorRef} blocks={blocks} />
+            )}
             {tab === "stylesheet" && (
               <StylesheetTab
                 templateId={templateId}
@@ -138,13 +143,57 @@ interface MapEntry {
   isIntent: boolean;
 }
 
+function buildEntriesFromBlocks(blocks: PtTopLevel[]): MapEntry[] {
+  const entries: MapEntry[] = [];
+  function addBlock(block: PtBlock, depthOffset = 0) {
+    const m = block.style.match(/^h([1-6])$/);
+    if (m) {
+      const level = parseInt(m[1]);
+      const label =
+        block.children
+          .filter((c): c is PtSpan => c._type === "span")
+          .map((c) => c.text)
+          .join("") || `Heading ${level}`;
+      entries.push({
+        label,
+        indent: level - 1 + depthOffset,
+        pos: -1,
+        isIntent: false,
+      });
+    }
+  }
+  for (const block of blocks) {
+    if (block._type === "block") {
+      addBlock(block as PtBlock);
+    } else if (block._type === "section") {
+      const s = block as PtSection;
+      const intent = s.conditionIntent ?? s.repeatIntent;
+      if (intent) {
+        entries.push({
+          label: `◈ ${intent.length > 30 ? intent.slice(0, 30) + "…" : intent}`,
+          indent: 0,
+          pos: -1,
+          isIntent: true,
+        });
+      }
+      for (const inner of s.content) {
+        if (inner._type === "block") addBlock(inner as PtBlock);
+      }
+    }
+  }
+  return entries;
+}
+
 function DocumentMapTab({
   editorRef,
+  blocks,
 }: {
   editorRef: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+  blocks: PtTopLevel[];
 }) {
-  const [entries, setEntries] = useState<MapEntry[]>([]);
+  const [editorEntries, setEditorEntries] = useState<MapEntry[]>([]);
   const [highlighted, setHighlighted] = useState<number | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
 
   useEffect(() => {
     function rebuild() {
@@ -174,14 +223,14 @@ function DocumentMapTab({
           }
         }
       });
-      setEntries(newEntries);
+      setEditorEntries(newEntries);
     }
 
-    // Poll until editor is ready, then subscribe to updates
     const poll = setInterval(() => {
       const editor = editorRef.current;
       if (editor) {
         clearInterval(poll);
+        setEditorReady(true);
         rebuild();
         editor.on("update", rebuild);
       }
@@ -194,7 +243,10 @@ function DocumentMapTab({
     };
   }, [editorRef]);
 
+  const entries = editorReady ? editorEntries : buildEntriesFromBlocks(blocks);
+
   function navigateTo(pos: number) {
+    if (pos === -1) return;
     const editor = editorRef.current;
     if (!editor) return;
     editor.commands.setTextSelection(pos + 1);
@@ -217,9 +269,9 @@ function DocumentMapTab({
         <button
           key={i}
           onClick={() => navigateTo(entry.pos)}
-          className={`w-full text-left px-4 py-1.5 text-sm transition-colors rounded-none hover:bg-zinc-50 ${
+          className={`w-full text-left py-1.5 text-sm transition-colors rounded-none hover:bg-zinc-50 ${
             highlighted === entry.pos ? "bg-primary/10 text-primary" : ""
-          } ${entry.isIntent ? "text-primary/80 font-medium" : "text-foreground"}`}
+          } ${entry.isIntent ? "text-primary/80 font-medium" : "text-foreground"} ${entry.pos === -1 ? "cursor-default" : ""}`}
           style={{ paddingLeft: `${(entry.indent + 1) * 12}px` }}
         >
           {entry.label}

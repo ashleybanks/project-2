@@ -421,7 +421,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("Hello world"), "expected text in output, got:\n{source}");
     }
 
@@ -434,7 +434,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("= My Heading"), "expected h1 in output, got:\n{source}");
     }
 
@@ -449,7 +449,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("Payment received"), "section content should render naively, got:\n{source}");
     }
 
@@ -462,7 +462,7 @@ mod tests {
         let json = r#"[{"_type":"block","_key":"k1","style":"normal","children":[{"_type":"span","_key":"k2","text":"Hello","marks":[]}]}]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, Some(&stylesheet));
+        let source = crate::compile(&model, Some(&stylesheet), true);
         assert!(source.contains("\"Latin Modern Roman\""), "expected custom font, got:\n{source}");
     }
 
@@ -490,7 +490,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("#table("), "expected #table(, got:\n{source}");
         assert!(source.contains("columns: (1fr, 1fr)"), "expected fractional columns, got:\n{source}");
         assert!(source.contains("table.header("), "expected table.header(), got:\n{source}");
@@ -506,7 +506,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("- Buy milk"), "expected bullet list item, got:\n{source}");
     }
 
@@ -521,7 +521,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("Number: "), "got:\n{source}");
         assert!(source.contains("#data.invoice_number"), "expected merge field, got:\n{source}");
         assert!(source.contains(" end"), "got:\n{source}");
@@ -538,7 +538,7 @@ mod tests {
         ]"#;
         let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
         let model = map_to_block_model(blocks);
-        let source = crate::compile(&model, None);
+        let source = crate::compile(&model, None, true);
         assert!(source.contains("Before"), "got:\n{source}");
         assert!(source.contains("After"), "got:\n{source}");
         assert!(source.contains("Invoice Number"), "unresolved intent should show label, got:\n{source}");

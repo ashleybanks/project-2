@@ -5,7 +5,6 @@ import {
   renderPreviewWithDataSvgPositions,
   collectFieldIntents,
   parseSvgPageSize,
-  getByPath,
 } from "@/lib/wasmPreview";
 import type { FieldIntentPosition } from "@/lib/wasmPreview";
 import type {
@@ -35,15 +34,13 @@ type RenderState =
   | { status: "ready"; pages: string[]; positions: FieldIntentPosition[] }
   | { status: "error"; message: string };
 
-type ViewMode = "fields" | "data";
-
 export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
   const qc = useQueryClient();
   const [renderState, setRenderState] = useState<RenderState>({
     status: "idle",
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("data");
+  const [showFields, setShowFields] = useState(false);
   const [activeChipKey, setActiveChipKey] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,6 +102,7 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
           blocks,
           stylesheet,
           payload,
+          showFields,
         );
         setRenderState({ status: "ready", pages, positions });
       } else {
@@ -125,8 +123,7 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, stylesheet, currentItem]);
+  }, [blocks, stylesheet, currentItem, showFields]);
 
   function handlePrev() {
     if (selectedIndex > 0) {
@@ -145,25 +142,20 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
     <div className="flex flex-col h-full bg-background">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border bg-card shrink-0 flex-wrap">
-        {/* Fields / Data toggle */}
-        <div className="flex rounded-md border border-border overflow-hidden text-xs">
-          {(["data", "fields"] as const).map((m, i) => (
-            <button
-              key={m}
-              onClick={() => {
-                setViewMode(m);
-                setActiveChipKey(null);
-              }}
-              className={`px-2.5 h-7 font-medium transition-colors ${
-                viewMode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              } ${i > 0 ? "border-l border-border" : ""}`}
-            >
-              {m === "fields" ? "Fields" : "Data"}
-            </button>
-          ))}
-        </div>
+        {/* Show data fields toggle */}
+        <button
+          onClick={() => {
+            setShowFields((v) => !v);
+            setActiveChipKey(null);
+          }}
+          className={`px-2.5 h-7 text-xs font-medium rounded border transition-colors ${
+            showFields
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          Show data fields
+        </button>
 
         {/* Record navigator */}
         {totalItems > 0 && (
@@ -276,16 +268,12 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
                     dangerouslySetInnerHTML={{ __html: svg }}
                   />
 
-                  {viewMode === "fields" &&
+                  {showFields &&
                     pageSize &&
                     pagePositions.map((pos) => {
                       const idx = Number(pos.key.split("-")[1]);
                       const intent = fieldIntents[idx];
                       if (!intent) return null;
-                      // The rendered text itself is already coloured indigo
-                      // (see compiler.rs) — this box is just the click
-                      // target, so keep it subtle rather than redrawing a
-                      // second strong highlight on top.
                       const leftPct = (pos.x_pt / pageSize.widthPt) * 100;
                       const topPct = (pos.y_pt / pageSize.heightPt) * 100;
                       const widthPct = (pos.w_pt / pageSize.widthPt) * 100;
@@ -315,54 +303,12 @@ export default function PreviewPane({ blocks, stylesheet, templateId }: Props) {
                             title={intent.display_name || intent.label}
                           />
 
-                          {intent.expression && (
-                            <span
-                              className="absolute -top-1.5 -right-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] font-semibold leading-none text-primary-foreground"
-                              title="Format applied in generated PDF"
-                            >
-                              ƒ
-                            </span>
-                          )}
-
                           {isActive && (
                             <FieldIntentChipPopover
                               intent={intent}
                               onClose={() => setActiveChipKey(null)}
                             />
                           )}
-                        </div>
-                      );
-                    })}
-
-                  {viewMode === "data" &&
-                    pageSize &&
-                    pagePositions.map((pos) => {
-                      const idx = Number(pos.key.split("-")[1]);
-                      const intent = fieldIntents[idx];
-                      if (!intent || !intent.expression || !intent.field_path)
-                        return null;
-                      const rawValue = currentItem?.payload
-                        ? getByPath(currentItem.payload, intent.field_path)
-                        : undefined;
-                      const leftPct = (pos.x_pt / pageSize.widthPt) * 100;
-                      const topPct = (pos.y_pt / pageSize.heightPt) * 100;
-                      const widthPct = (pos.w_pt / pageSize.widthPt) * 100;
-                      return (
-                        <div
-                          key={pos.key}
-                          className="absolute z-10"
-                          style={{
-                            left: `${leftPct}%`,
-                            top: `${topPct}%`,
-                            width: `${widthPct}%`,
-                          }}
-                        >
-                          <span
-                            className="absolute -top-1.5 -right-1.5 flex h-3 w-3 cursor-help items-center justify-center rounded-full bg-primary text-[8px] font-semibold leading-none text-primary-foreground"
-                            title={`Raw value: ${rawValue == null ? "—" : String(rawValue)} — Format applied in generated PDF`}
-                          >
-                            ƒ
-                          </span>
                         </div>
                       );
                     })}

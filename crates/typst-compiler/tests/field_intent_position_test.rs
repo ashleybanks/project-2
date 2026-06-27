@@ -15,7 +15,7 @@ fn field_intent_positions_resolve_via_introspector() {
 
     let blocks: Vec<FrontendTopLevel> = serde_json::from_str(json).unwrap();
     let model = map_to_block_model(blocks);
-    let source = typst_compiler::compile(&model, None);
+    let source = typst_compiler::compile(&model, None, true);
 
     assert!(source.contains("key: \"fi-0\""), "expected fi-0 key in source:\n{source}");
     assert!(source.contains("key: \"fi-1\""), "expected fi-1 key in source:\n{source}");

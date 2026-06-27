@@ -21,7 +21,7 @@ fn field_intent_after_wrap_lands_on_its_own_line_not_the_next() {
 
     let blocks: Vec<FrontendTopLevel> = serde_json::from_str(&json).unwrap();
     let model = map_to_block_model(blocks);
-    let source = typst_compiler::compile(&model, None);
+    let source = typst_compiler::compile(&model, None, true);
 
     let payload = json!({ "start": "AAA", "after_wrap": "ZZZ" });
 

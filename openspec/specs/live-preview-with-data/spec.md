@@ -5,38 +5,16 @@ status: done
 
 # Live Preview with Data
 
-## WASM export
+## Purpose
 
-A second export `render_preview_with_data` is added to the `typst-compiler` crate:
+The in-browser preview now renders SVG (not PDF) using `render_preview_svg` / `render_preview_with_data_svg`. See `svg-preview` spec for the rendering surface and `preview-record-navigation` spec for record selection.
 
-```rust
-pub fn render_preview_with_data(
-    blocks_json: &str,
-    stylesheet_json: &str,
-    data_json: &str,   // JSON-serialised payload; pass "{}" for empty
-    font_data: &Array,
-) -> Result<Vec<u8>, JsValue>
-```
+The `render_preview_with_data` PDF export is retained for **server-side generation only** and is unchanged. The frontend no longer calls it.
 
-The existing `render_preview` (which passes `{}` internally) is kept unchanged for backwards compatibility.
+## Removed
 
-## Data selector (preview mode)
+The following capabilities were removed as part of the template-nav-restructure change:
 
-When the user is in Preview mode, a data selector is shown above the PDF iframe.
-
-**Options:**
-- **No data** (default) — renders with `{}`; shows template structure without values
-- **Test record N** — one entry per record returned by `GET /schema/test-data`; uses that record as the payload
-- **Custom JSON** — shows a compact textarea; user pastes or types a JSON object; an "Apply" button triggers re-render
-
-Switching selection triggers a new WASM render (same 400ms debounce path as block/stylesheet changes).
-
-## Download preview
-
-A "Download preview" button in the preview toolbar streams the current PDF bytes as a browser download (`Blob` → `<a download>`). No server request. The filename is `preview.pdf`.
-
-This button is always visible in preview mode (disabled while the render is in progress).
-
-## Data selector state
-
-The selected data mode is local UI state, not persisted. It resets to "No data" on page reload.
+- **Data selector in preview toolbar** — The `DataSelector` component (No data / Test record N / Custom JSON) is removed. Data context in Preview now comes exclusively from the active job's record set, navigated via the record navigator in the Preview toolbar.
+- **Download preview button** — The "Download preview" button (which downloaded WASM-rendered PDF bytes) is removed. The WASM preview now renders SVG. Server-side PDFs are available for download per item from the Data tab once generated.
+- **WASM export `render_preview_with_data` (browser use)** — The PDF-based export is superseded by `render_preview_with_data_svg` for in-browser preview. The server-side render path continues to use the PDF exports unchanged.

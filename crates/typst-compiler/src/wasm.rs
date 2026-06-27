@@ -24,7 +24,7 @@ pub fn render_preview(
         .collect();
 
     let model = map_to_block_model(blocks);
-    let source = crate::compile(&model, stylesheet.as_ref());
+    let source = crate::compile(&model, stylesheet.as_ref(), false);
     let payload = serde_json::Value::Object(Default::default());
 
     crate::render_with_fonts(&source, &payload, &fonts)
@@ -51,7 +51,7 @@ pub fn render_preview_svg(
         .collect();
 
     let model = map_to_block_model(blocks);
-    let source = crate::compile(&model, stylesheet.as_ref());
+    let source = crate::compile(&model, stylesheet.as_ref(), false);
     let payload = serde_json::Value::Object(Default::default());
 
     let pages = crate::render_svg_with_fonts(&source, &payload, &fonts)
@@ -70,6 +70,7 @@ pub fn render_preview_with_data_svg(
     stylesheet_json: &str,
     data_json: &str,
     font_data: &Array,
+    highlight_fields: bool,
 ) -> Result<Array, JsValue> {
     let mut blocks: Vec<FrontendTopLevel> = serde_json::from_str(blocks_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse blocks: {e}")))?;
@@ -95,7 +96,7 @@ pub fn render_preview_with_data_svg(
         crate::frontend_model::evaluate_and_apply_expressions(&mut blocks, &payload);
 
     let model = map_to_block_model(blocks);
-    let source = crate::compile(&model, stylesheet.as_ref());
+    let source = crate::compile(&model, stylesheet.as_ref(), highlight_fields);
 
     let pages = crate::render_svg_with_fonts(&source, &augmented_payload, &fonts)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -116,6 +117,7 @@ pub fn render_preview_with_data_svg_positions(
     stylesheet_json: &str,
     data_json: &str,
     font_data: &Array,
+    highlight_fields: bool,
 ) -> Result<JsString, JsValue> {
     let mut blocks: Vec<FrontendTopLevel> = serde_json::from_str(blocks_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse blocks: {e}")))?;
@@ -141,7 +143,7 @@ pub fn render_preview_with_data_svg_positions(
         crate::frontend_model::evaluate_and_apply_expressions(&mut blocks, &payload);
 
     let model = map_to_block_model(blocks);
-    let source = crate::compile(&model, stylesheet.as_ref());
+    let source = crate::compile(&model, stylesheet.as_ref(), highlight_fields);
 
     let (pages, positions) =
         crate::renderer::render_svg_with_fonts_and_positions(&source, &augmented_payload, &fonts)
@@ -181,7 +183,7 @@ pub fn render_preview_with_data(
         .collect();
 
     let model = map_to_block_model(blocks);
-    let source = crate::compile(&model, stylesheet.as_ref());
+    let source = crate::compile(&model, stylesheet.as_ref(), false);
 
     crate::render_with_fonts(&source, &payload, &fonts)
         .map_err(|e| JsValue::from_str(&e.to_string()))

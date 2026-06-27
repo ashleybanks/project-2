@@ -165,7 +165,7 @@ async fn render_test() -> Response {
     });
 
     let model = typst_compiler::model::spike_model();
-    let source = compile(&model, None);
+    let source = compile(&model, None, false);
 
     match render(&source, &payload) {
         Ok(pdf_bytes) => (

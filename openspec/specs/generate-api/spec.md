@@ -5,77 +5,65 @@ status: done
 
 # Generate API
 
-## POST /api/templates/{id}/generate
+## Requirements
 
-Enqueues a document generation job for the given template.
+### Requirement: Job endpoints operate on the container+items model
+The generate API SHALL be restructured to reflect the job container and job item hierarchy. All existing single-document endpoints are replaced by job-level and item-level endpoints.
 
-**Auth:** required (session cookie)
+**Endpoints:**
 
-**Request body:**
-```json
-{ "payload": { ...any object... } }
-```
+`POST /api/templates/{id}/jobs`
+- Body: `{ "records": [{...}, {...}] }` — JSON array of payloads
+- Response `201`: `{ "job_id": "uuid", "item_count": N }`
+- Response `422`: per-record validation errors (see below)
+- Validates all records against the template schema before creating the job
+- Creates a `jobs` row (`status: draft`) and one `job_items` row per record (`status: loaded`)
+- The new job becomes the active job for the template
 
-**Responses:**
+`POST /api/jobs/{id}/submit`
+- Submits all `loaded` items in the job to the render queue
+- Response `202`: `{ "queued": N }`
 
-`202 Accepted`
-```json
-{ "job_id": "uuid" }
-```
+`POST /api/jobs/{id}/items/{item_id}/submit`
+- Submits a single `loaded` item to the render queue
+- Response `202`
 
-`404 Not Found` — template does not exist or is not owned by the authenticated user
+`GET /api/jobs/{id}`
+- Returns job status and item list
+- Response `200`: `{ "id", "name", "status", "total_count", "done_count", "failed_count", "is_active", "items": [{ "id", "record_index", "status", "error_message" }] }`
 
-`422 Unprocessable Entity` — payload fails schema validation
-```json
-{
-  "errors": [
-    { "field": "client.name", "message": "is required" },
-    { "field": "amount", "message": "expected number, got string" }
-  ]
-}
-```
+`GET /api/jobs/{id}/items/{item_id}/download`
+- Streams the generated PDF for a completed item
+- Response `200`: `Content-Type: application/pdf`, `Content-Disposition: attachment`
+- Response `404`: item not found or not owned by user
+- Response `409`: item not yet done
 
-**Behaviour:**
-- Validation only runs if the template has an uploaded schema. No schema = no validation.
-- Job row is inserted with `status: pending` before the background task starts.
-- Render runs in a `tokio::spawn` task. The 202 response is returned immediately.
+`GET /api/jobs/{id}/download`
+- Streams a ZIP of all completed items in the job
+- Response `200`: `Content-Type: application/zip`
+- Response `404`: job not found or not owned by user
+- Response `409`: no items done yet
 
----
+`PATCH /api/jobs/{id}/active`
+- Makes this job the active job for its template (swaps `is_active` in a transaction)
+- Response `200`: `{ "job_id": "uuid" }`
 
-## GET /api/jobs/{id}
+#### Scenario: Creating a job validates all records before inserting
+- **WHEN** `POST /api/templates/{id}/jobs` is called with records that fail schema validation
+- **THEN** the response is `422` with per-record errors: `{ "errors": [{ "record_index": 2, "field": "client.name", "message": "is required" }] }`
+- **THEN** no job or job items are created
 
-Returns the current status of a generation job.
+#### Scenario: Creating a job with valid records returns 201
+- **WHEN** `POST /api/templates/{id}/jobs` is called with all-valid records
+- **THEN** the response is `201` with `job_id` and `item_count`
+- **THEN** the job is immediately the active job for the template
 
-**Auth:** required; user must own the job
+#### Scenario: Submit all returns 202 with count of queued items
+- **WHEN** `POST /api/jobs/{id}/submit` is called on a draft job with N loaded items
+- **THEN** the response is `202 Accepted` with `{ "queued": N }`
+- **THEN** all N items begin rendering asynchronously
 
-**Response `200`:**
-```json
-{
-  "id": "uuid",
-  "status": "pending | processing | done | failed",
-  "error_message": null,
-  "download_url": "/api/jobs/{id}/download"
-}
-```
-
-`download_url` is present only when `status = done`. `error_message` is present only when `status = failed`.
-
-**Responses:**
-- `404` — job not found or not owned by user
-
----
-
-## GET /api/jobs/{id}/download
-
-Streams the generated PDF for a completed job.
-
-**Auth:** required; user must own the job
-
-**Response `200`:**
-- `Content-Type: application/pdf`
-- `Content-Disposition: attachment; filename="document.pdf"`
-- Body: raw PDF bytes
-
-**Responses:**
-- `404` — job not found or not owned by user
-- `409 Conflict` — job exists but is not yet done
+#### Scenario: Job download returns ZIP of completed PDFs
+- **WHEN** `GET /api/jobs/{id}/download` is called and 3 of 10 items are done
+- **THEN** the response is a ZIP containing 3 PDF files
+- **THEN** the filenames are `record_0.pdf`, `record_1.pdf`, etc. (or `{record_id}.pdf` if set)

@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines the behaviour of the in-browser WASM-based PDF preview in the template workspace. Users can switch to Preview mode at any time to render the current block model to a PDF via the Typst WASM renderer, without leaving the editor.
+Defines the behaviour of the in-browser WASM-based preview in the template workspace. Users can switch to Preview mode at any time to render the current block model to SVG via the Typst WASM renderer, without leaving the editor.
 
 ---
 
@@ -19,33 +19,24 @@ The Preview mode button in the template workspace SHALL be enabled and clickable
 
 ---
 
-### Requirement: WASM renderer produces a PDF from the current block model
-The system SHALL compile the current editor's `PtTopLevel[]` blocks to a PDF using the in-browser Typst WASM renderer when the user switches to Preview mode.
+### Requirement: Preview tab renders SVG, not PDF
+The Preview mode SHALL render the template as SVG using the `render_preview_svg` / `render_preview_with_data_svg` WASM exports. The PDF iframe is removed. The SVG is displayed as a vertically stacked sequence of pages in the preview area (see `svg-preview` spec).
 
-#### Scenario: Render triggered on first Preview tab switch
-- **WHEN** a user switches to Preview mode for the first time in a session
-- **THEN** the WASM module is loaded and `render_preview` is called with the current blocks and stylesheet
-- **THEN** a PDF is produced and displayed in the preview area
+#### Scenario: Render triggered on Preview tab switch
+- **WHEN** a user switches to the Preview tab
+- **THEN** `render_preview_svg` (or `render_preview_with_data_svg` if a record is selected) is called
+- **THEN** the resulting SVG pages are rendered in the preview area
 
 #### Scenario: Plain text blocks render correctly
 - **WHEN** the template contains only text blocks with spans (no fieldIntent nodes, no sections)
-- **THEN** the rendered PDF contains the template text with correct heading levels and paragraph styles
+- **THEN** the rendered SVG contains the template text with correct heading levels and paragraph styles
 
 #### Scenario: Empty template renders without error
 - **WHEN** the template has no blocks
-- **THEN** the preview renders a blank page PDF without error
+- **THEN** the preview renders a blank page SVG without error
 
----
-
-### Requirement: PDF is displayed in the preview area
-The system SHALL display the rendered PDF as a blob URL in an `<iframe>` within the Preview tab area.
-
-#### Scenario: PDF renders in preview area
-- **WHEN** a render completes successfully
-- **THEN** the preview area shows the PDF in an iframe filling the available space
-
-#### Scenario: Loading state is shown during render
-- **WHEN** the render is in-flight (WASM loading or compile running)
+#### Scenario: Loading state shown during SVG render
+- **WHEN** the WASM render is in-flight
 - **THEN** a loading indicator is shown in the preview area
 
 ---
@@ -54,9 +45,9 @@ The system SHALL display the rendered PDF as a blob URL in an `<iframe>` within 
 The system SHALL display an error message if the WASM render fails, rather than showing a blank or broken state.
 
 #### Scenario: Render error is shown
-- **WHEN** `render_preview` returns an error
-- **THEN** the preview area shows a human-readable error message
-- **THEN** the user can return to Build mode without being stuck
+- **WHEN** the WASM SVG render returns an error
+- **THEN** a human-readable error message is shown
+- **THEN** the user can switch to another tab without being stuck
 
 ---
 
@@ -71,14 +62,3 @@ The system SHALL not load the WASM module until the user first switches to Previ
 - **WHEN** a user switches to Preview mode multiple times in one session
 - **THEN** the WASM module is initialised only once and reused for subsequent renders
 
----
-
-### Requirement: Manual refresh re-renders the preview
-The system SHALL provide a way for the user to re-render the preview after making edits in Build mode.
-
-#### Scenario: Refresh button re-renders
-- **WHEN** a user returns to Build mode, makes edits, and switches back to Preview mode
-- **THEN** a refresh control is available
-- **WHEN** the user activates the refresh control
-- **THEN** `render_preview` is called again with the updated blocks
-- **THEN** the preview updates to reflect the current state

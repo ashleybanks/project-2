@@ -76,8 +76,7 @@ function buildBrandCSS(s: StylesheetDef): string {
 
   for (const n of HEADING_LEVELS) {
     const style = s[`h${n}` as keyof StylesheetDef] as
-      | ParagraphStyle
-      | undefined;
+      ParagraphStyle | undefined;
     if (style?.fontSize !== undefined)
       vars.push(`  --brand-h${n}-size: ${style.fontSize}pt`);
     if (style?.spacingBefore !== undefined)
@@ -99,8 +98,7 @@ function buildBrandCSS(s: StylesheetDef): string {
   // ── Per-heading rules ──────────────────────────────────────────────────────
   for (const n of HEADING_LEVELS) {
     const style = s[`h${n}` as keyof StylesheetDef] as
-      | ParagraphStyle
-      | undefined;
+      ParagraphStyle | undefined;
     const decls: string[] = [];
     if (s.headingFont)
       decls.push(`font-family: var(--brand-heading-font), sans-serif`);

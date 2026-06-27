@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, Database } from "lucide-react";
 
 type DataMode =
-  | { type: "none" }
-  | { type: "test"; index: number }
-  | { type: "custom" };
+  { type: "none" } | { type: "test"; index: number } | { type: "custom" };
 
 interface Props {
   templateId: string;

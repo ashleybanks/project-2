@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession, signOut } from "../lib/auth-client";
+import { useTemplateNav } from "@/lib/templateNavContext";
+import ParapheMark from "./ParapheMark";
 
 export default function TopNav() {
   const { data: session } = useSession();
   const navigate = useNavigate();
+  const { name: templateName, saveStatus } = useTemplateNav();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -35,12 +38,38 @@ export default function TopNav() {
 
   return (
     <header className="h-14 border-b border-border bg-white flex items-center px-6 shrink-0 z-30">
-      <Link
-        to="/app/templates"
-        className="font-semibold text-2xl tracking-tight text-foreground hover:opacity-70 transition-opacity"
-      >
-        Tessia
-      </Link>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <Link
+          to="/app/templates"
+          className="flex items-center gap-2 shrink-0 group"
+        >
+          <ParapheMark
+            className={`transition-opacity group-hover:opacity-70 ${templateName ? "w-5 h-5" : "w-6 h-6"} text-primary`}
+          />
+          <span
+            className={`font-semibold tracking-tight transition-colors group-hover:opacity-70 ${
+              templateName
+                ? "text-lg text-muted-foreground"
+                : "text-2xl text-foreground"
+            }`}
+          >
+            Paraphe
+          </span>
+        </Link>
+        {templateName && (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+            <span className="text-base font-medium text-foreground truncate max-w-xs">
+              {templateName}
+            </span>
+            {saveStatus !== "idle" && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                {saveStatus === "saving" ? "Saving…" : "Saved"}
+              </span>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="ml-auto relative" ref={menuRef}>
         <button

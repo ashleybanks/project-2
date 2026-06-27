@@ -385,18 +385,9 @@ export const generateTestData = (templateId: string, count = 10) =>
 // ── Job model ─────────────────────────────────────────────────────────────────
 
 export type JobItemStatus =
-  | "loaded"
-  | "queued"
-  | "processing"
-  | "done"
-  | "failed";
+  "loaded" | "queued" | "processing" | "done" | "failed";
 export type JobContainerStatus =
-  | "draft"
-  | "pending"
-  | "processing"
-  | "done"
-  | "partial"
-  | "failed";
+  "draft" | "pending" | "processing" | "done" | "partial" | "failed";
 
 export interface JobItem {
   id: string;

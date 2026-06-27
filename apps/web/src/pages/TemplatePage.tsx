@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTemplate,
@@ -20,10 +20,8 @@ import PreviewPane from "../components/PreviewPane";
 import RightPanel from "../components/RightPanel";
 import DataPane from "../components/DataPane";
 import JobPane from "../components/JobPane";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
 import { useEditor } from "@tiptap/react";
+import { useTemplateNav } from "@/lib/templateNavContext";
 
 function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
   const result = new Map<string, string>();
@@ -62,7 +60,6 @@ function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
 
 export default function TemplatePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const { data: templateData, isLoading } = useQuery({
@@ -113,6 +110,8 @@ export default function TemplatePage() {
     setMode(next);
   }
 
+  const { setTemplateNav, clearTemplateNav } = useTemplateNav();
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const prevIntentsRef = useRef<Map<string, string>>(new Map());
@@ -129,6 +128,14 @@ export default function TemplatePage() {
       );
     }
   }, [templateData]);
+
+  useEffect(() => {
+    setTemplateNav(name, saveStatus);
+  }, [name, saveStatus]);
+
+  useEffect(() => {
+    return () => clearTemplateNav();
+  }, []);
 
   const saveMut = useMutation({
     mutationFn: (data: {
@@ -217,41 +224,17 @@ export default function TemplatePage() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      {/* Template header */}
-      <header className="border-b border-border bg-white px-4 py-2.5 flex items-center shrink-0">
-        {/* Left: back + name */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <button
-            onClick={() => navigate("/app/templates")}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/60 shrink-0"
-            title="Back to templates"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <Separator orientation="vertical" className="h-5" />
-          <Input
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            className="border-none shadow-none text-sm font-medium p-0 h-auto focus-visible:ring-0 max-w-xs"
-          />
-          <span className="text-xs text-muted-foreground w-12 shrink-0">
-            {saveStatus === "saving"
-              ? "Saving…"
-              : saveStatus === "saved"
-                ? "Saved"
-                : ""}
-          </span>
-        </div>
-
-        {/* Center: tabs */}
-        <div className="flex items-center">
+      {/* Template header — tabs only */}
+      <header className="border-b border-border bg-white flex items-stretch shrink-0">
+        <div className="flex-1" />
+        <div className="flex items-stretch">
           {topTabs.map(({ tab, label }) => {
             const active = mode === tab;
             return (
               <button
                 key={tab}
                 onClick={() => handleModeChange(tab)}
-                className={`px-4 h-9 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   active
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -262,8 +245,6 @@ export default function TemplatePage() {
             );
           })}
         </div>
-
-        {/* Right: reserved for future actions */}
         <div className="flex-1" />
       </header>
 

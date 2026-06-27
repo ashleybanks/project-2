@@ -496,8 +496,7 @@ function FieldIntentNodeViewComponent({
   const fieldPath: string | null = node.attrs.field_path as string | null;
   const expression: string | null = node.attrs.expression as string | null;
   const expressionLabel: string | null = node.attrs.expression_label as
-    | string
-    | null;
+    string | null;
 
   const chipLabel = displayName || label;
   const isResolved = !!fieldPath;

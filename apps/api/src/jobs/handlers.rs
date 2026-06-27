@@ -36,6 +36,7 @@ pub struct JobResponse {
     pub name: String,
     pub status: String,
     pub is_active: bool,
+    pub archived: bool,
     pub total_count: i32,
     pub done_count: i32,
     pub failed_count: i32,
@@ -50,6 +51,7 @@ pub struct JobSummary {
     pub name: String,
     pub status: String,
     pub is_active: bool,
+    pub archived: bool,
     pub total_count: i32,
     pub done_count: i32,
     pub failed_count: i32,
@@ -195,7 +197,7 @@ pub async fn list_template_jobs(
     }
 
     let rows = sqlx::query!(
-        r#"SELECT id, name, status, is_active, total_count, done_count, failed_count, created_at
+        r#"SELECT id, name, status, is_active, archived, total_count, done_count, failed_count, created_at
            FROM jobs WHERE template_id = $1 ORDER BY created_at DESC"#,
         template_id,
     )
@@ -209,6 +211,7 @@ pub async fn list_template_jobs(
             name: r.name,
             status: r.status,
             is_active: r.is_active,
+            archived: r.archived,
             total_count: r.total_count,
             done_count: r.done_count,
             failed_count: r.failed_count,
@@ -226,7 +229,7 @@ pub async fn get_job(
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<JobResponse>, AppError> {
     let row = sqlx::query!(
-        r#"SELECT id, name, status, is_active, total_count, done_count, failed_count,
+        r#"SELECT id, name, status, is_active, archived, total_count, done_count, failed_count,
                   created_at, completed_at
            FROM jobs WHERE id = $1 AND user_id = $2"#,
         job_id,
@@ -261,6 +264,7 @@ pub async fn get_job(
         name: row.name,
         status: row.status,
         is_active: row.is_active,
+        archived: row.archived,
         total_count: row.total_count,
         done_count: row.done_count,
         failed_count: row.failed_count,
@@ -523,4 +527,100 @@ pub async fn set_active(
     tx.commit().await?;
 
     Ok(Json(json!({ "job_id": job_id })))
+}
+
+/// POST /api/jobs/{id}/archive
+pub async fn archive_job(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(job_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let job = sqlx::query!(
+        "SELECT id, status FROM jobs WHERE id = $1 AND user_id = $2",
+        job_id,
+        user.user_id,
+    )
+    .fetch_optional(&state.db)
+    .await?;
+    let job = job.ok_or(AppError::NotFound)?;
+
+    let terminal = matches!(job.status.as_str(), "done" | "partial" | "failed" | "cancelled");
+    if !terminal {
+        return Ok((
+            StatusCode::CONFLICT,
+            Json(json!({ "error": "Only terminal jobs (done, partial, failed, cancelled) can be archived" })),
+        )
+            .into_response());
+    }
+
+    sqlx::query!(
+        "UPDATE jobs SET archived = true WHERE id = $1",
+        job_id,
+    )
+    .execute(&state.db)
+    .await?;
+
+    Ok(StatusCode::OK.into_response())
+}
+
+/// POST /api/jobs/{id}/unarchive
+pub async fn unarchive_job(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(job_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let updated = sqlx::query_scalar!(
+        "UPDATE jobs SET archived = false WHERE id = $1 AND user_id = $2 RETURNING id",
+        job_id,
+        user.user_id,
+    )
+    .fetch_optional(&state.db)
+    .await?;
+
+    if updated.is_none() {
+        return Err(AppError::NotFound);
+    }
+
+    Ok(StatusCode::OK.into_response())
+}
+
+/// POST /api/jobs/{id}/cancel
+pub async fn cancel_job(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(job_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let updated = sqlx::query_scalar!(
+        r#"UPDATE jobs SET status = 'cancelled', archived = true
+           WHERE id = $1 AND user_id = $2
+             AND status IN ('draft', 'pending', 'processing')
+           RETURNING id"#,
+        job_id,
+        user.user_id,
+    )
+    .fetch_optional(&state.db)
+    .await?;
+
+    if updated.is_none() {
+        // Either not found or already terminal
+        let exists = sqlx::query_scalar!(
+            "SELECT id FROM jobs WHERE id = $1 AND user_id = $2",
+            job_id,
+            user.user_id,
+        )
+        .fetch_optional(&state.db)
+        .await?;
+
+        return if exists.is_none() {
+            Err(AppError::NotFound)
+        } else {
+            Ok((
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "Job is already in a terminal state and cannot be cancelled" })),
+            )
+                .into_response())
+        };
+    }
+
+    Ok(StatusCode::OK.into_response())
 }

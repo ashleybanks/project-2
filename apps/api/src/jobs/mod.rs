@@ -14,12 +14,15 @@ pub fn template_jobs_router(state: AppState) -> Router<AppState> {
 }
 
 /// Routes under /api/jobs:
-///   GET   /{id}                      → get_job
-///   POST  /{id}/submit               → submit_job
+///   GET   /{id}                        → get_job
+///   POST  /{id}/submit                 → submit_job
 ///   POST  /{id}/items/{item_id}/submit → submit_item
 ///   GET   /{id}/items/{item_id}/download → download_item
-///   GET   /{id}/download             → download_zip
-///   PATCH /{id}/active               → set_active
+///   GET   /{id}/download               → download_zip
+///   PATCH /{id}/active                 → set_active
+///   POST  /{id}/archive                → archive_job
+///   POST  /{id}/unarchive              → unarchive_job
+///   POST  /{id}/cancel                 → cancel_job
 pub fn jobs_router(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/{id}", get(handlers::get_job))
@@ -28,5 +31,8 @@ pub fn jobs_router(state: AppState) -> Router<AppState> {
         .route("/{id}/items/{item_id}/download", get(handlers::download_item))
         .route("/{id}/download", get(handlers::download_zip))
         .route("/{id}/active", patch(handlers::set_active))
+        .route("/{id}/archive", post(handlers::archive_job))
+        .route("/{id}/unarchive", post(handlers::unarchive_job))
+        .route("/{id}/cancel", post(handlers::cancel_job))
         .with_state(state)
 }

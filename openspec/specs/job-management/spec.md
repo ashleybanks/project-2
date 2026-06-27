@@ -7,13 +7,14 @@ Defines the job container model, the Data tab surface for managing datasets and 
 ### Requirement: Job container data model
 The system SHALL maintain a `jobs` table as the first-class container for a set of records submitted against a template. Each job SHALL have an associated set of `job_items` rows, one per record. A job SHALL track aggregate progress via `total_count`, `done_count`, and `failed_count`.
 
-Job `status` values: `draft` | `pending` | `processing` | `done` | `partial` | `failed`
+Job `status` values: `draft` | `pending` | `processing` | `done` | `partial` | `failed` | `cancelled`
 - `draft`: dataset loaded, no items submitted to renderer
 - `pending`: all items queued, none started
 - `processing`: at least one item is rendering
 - `done`: all items completed successfully
 - `partial`: all items finished; at least one failed and at least one succeeded
 - `failed`: all items failed
+- `cancelled`: job was cancelled before all items completed; automatically archived
 
 Job item `status` values: `loaded` | `queued` | `processing` | `done` | `failed`
 - `loaded`: record exists in draft job, not yet submitted to renderer
@@ -61,6 +62,11 @@ The system SHALL enforce that at most one job per template has `is_active = true
 
 ---
 
+### Requirement: Job archived column
+The `jobs` table SHALL have an `archived BOOLEAN NOT NULL DEFAULT false` column. A `cancelled` status value SHALL be added to the `jobs.status` CHECK constraint.
+
+---
+
 ### Requirement: Job names are auto-generated
 The system SHALL assign each job a name of the form "Job N" where N is the 1-based sequential count of jobs for that template ordered by `created_at`.
 
@@ -71,40 +77,6 @@ The system SHALL assign each job a name of the form "Job N" where N is the 1-bas
 #### Scenario: Subsequent jobs are numbered sequentially
 - **WHEN** a third job is created for a template that already has two jobs
 - **THEN** its name is "Job 3"
-
----
-
-### Requirement: Data tab shows active job at top
-The system SHALL display the active job's record list at the top of the Data tab. Inactive, unarchived jobs SHALL be listed below in reverse-chronological order. A "View full history" link SHALL navigate to the full per-template job history page.
-
-#### Scenario: Active job record list displayed
-- **WHEN** a user navigates to the Data tab and an active job exists
-- **THEN** the active job's name, record count, and creation date are shown as a header
-- **THEN** each record is shown as a row with its `record_index`, a status indicator, and action buttons
-
-#### Scenario: Record row actions vary by status
-- **WHEN** a record's `job_item.status` is `loaded`
-- **THEN** a "Generate" button is shown for that row
-- **WHEN** a record's `job_item.status` is `done`
-- **THEN** a download link is shown for that row
-- **WHEN** a record's `job_item.status` is `failed`
-- **THEN** a "Retry" button and error detail affordance are shown
-
-#### Scenario: Generate all CTA shown when items are loaded
-- **WHEN** the active job has at least one item with `status: loaded`
-- **THEN** a "Generate all" button is shown below the record list
-- **WHEN** "Generate all" is clicked
-- **THEN** all `loaded` items are submitted to the render queue simultaneously
-
-#### Scenario: Previous jobs listed below active job
-- **WHEN** a template has multiple jobs and one is active
-- **THEN** previous unarchived jobs are listed below the active job in reverse-chronological order
-- **THEN** each shows its name, record count, date, status summary, and a download link (if done)
-- **THEN** a "···" menu offers "Make active" and "Archive" options
-
-#### Scenario: Empty state when no active job
-- **WHEN** the Data tab is opened and no job exists for the template
-- **THEN** an empty state is shown with a prompt to load a dataset and a "+ New job" button
 
 ---
 
@@ -129,13 +101,34 @@ The system SHALL allow users to create a new job by pasting a JSON array. The sy
 
 ---
 
+### Requirement: New job modal with file upload
+The new job creation flow SHALL use a modal dialog with two input modes: file upload (drag and drop or browse) and JSON paste.
+
+#### Scenario: File upload mode
+- **WHEN** the user opens the New job modal
+- **THEN** the Upload file tab is shown by default
+- **WHEN** the user drags and drops a `.json` file onto the drop zone
+- **THEN** the file is read and its contents are used as the records input
+- **WHEN** the file is not a `.json` file
+- **THEN** an error is shown: "Only JSON files are supported right now"
+- **WHEN** CSV or XLSX files are dropped
+- **THEN** the error notes these formats are "coming soon"
+
+#### Scenario: JSON paste mode
+- **WHEN** the user switches to the Paste JSON tab
+- **THEN** a textarea is shown for pasting a JSON array directly
+- **THEN** submission behaviour is identical to the existing JSON paste flow
+
+---
+
 ### Requirement: Generate API accepts job and item-level operations
 The system SHALL provide REST endpoints for job creation, item submission, item download, and job-level ZIP download.
 
 `POST /api/templates/{id}/jobs` — create a new job with a dataset
 `POST /api/jobs/{id}/submit` — submit all loaded items (Generate all)
 `POST /api/jobs/{id}/items/{item_id}/submit` — submit a single item (Generate per-row)
-`GET /api/jobs/{id}` — job status and item list
+`GET /api/jobs/{id}` — job status and item list; response includes `archived: bool`
+`GET /api/templates/{id}/jobs` — list jobs for a template; each job object includes `archived: bool`
 `GET /api/jobs/{id}/items/{item_id}/download` — download a completed item's PDF
 `GET /api/jobs/{id}/download` — download a ZIP of all completed items
 `PATCH /api/jobs/{id}/active` — make this job the active job for its template
@@ -156,6 +149,100 @@ The system SHALL provide REST endpoints for job creation, item submission, item 
 - **THEN** each PDF is named `{record_id}.pdf` if `record_id` is set, else `record_{index}.pdf`
 - **WHEN** no items are done
 - **THEN** the response is `409 Conflict`
+
+---
+
+### Requirement: Job lifecycle — archive, unarchive, cancel
+The system SHALL support archiving, unarchiving, and cancelling jobs via dedicated REST endpoints. Archived jobs SHALL be hidden from the default (Active) view in the Data tab. Cancelled jobs SHALL be automatically archived.
+
+#### Scenario: Archive a terminal job
+- **WHEN** `POST /api/jobs/{id}/archive` is called on a job with status `done`, `partial`, or `failed`
+- **THEN** the job's `archived` flag is set to `true`
+- **THEN** the response is `200 OK`
+- **WHEN** the job is in `draft`, `pending`, or `processing` status
+- **THEN** the response is `409 Conflict` with an appropriate error message
+
+#### Scenario: Unarchive a job
+- **WHEN** `POST /api/jobs/{id}/unarchive` is called
+- **THEN** the job's `archived` flag is set to `false`
+- **THEN** the response is `200 OK`
+
+#### Scenario: Cancel an in-flight job
+- **WHEN** `POST /api/jobs/{id}/cancel` is called on a job with status `draft`, `pending`, or `processing`
+- **THEN** the job's status is set to `cancelled` and `archived` is set to `true` atomically
+- **THEN** the response is `200 OK`
+- **WHEN** the job is already terminal (done/partial/failed/cancelled)
+- **THEN** the response is `409 Conflict`
+
+#### Scenario: Cancelled status is not overwritten by render completion
+- **WHEN** a job is cancelled while render tasks are still in flight
+- **THEN** in-flight render tasks are allowed to complete naturally (no task interruption)
+- **THEN** `update_job_aggregate` does NOT overwrite the `cancelled` status when items finish
+- **THEN** the job remains in `cancelled` status regardless of item outcomes
+
+#### Scenario: Cancelled jobs appear in archived view only
+- **WHEN** the Data tab filter is set to "Active"
+- **THEN** jobs with `archived = true` (including all cancelled jobs) are not shown
+- **WHEN** the Data tab filter is set to "All"
+- **THEN** cancelled and archived jobs are included in the list
+
+---
+
+### Requirement: Table-based job management UI
+The Data tab SHALL display all jobs in a full-width data table with sortable columns, client-side pagination, row-level actions, and bulk actions. The table replaces the previous active-job/previous-jobs split layout.
+
+#### Scenario: Job table columns
+- **WHEN** the Data tab is shown
+- **THEN** the table has columns: Submitted (datetime), Submitted by, Via, Description, Records, Status, Actions
+- **THEN** Submitted and Records columns are sortable; Submitted defaults to descending
+- **THEN** Submitted by and Via show `—` until backend provides these fields
+
+#### Scenario: Row actions are contextual by status
+- **WHEN** a job's status is `draft`, `pending`, or `processing`
+- **THEN** the row shows: Preview, Cancel
+- **WHEN** a job's status is `done`, `partial`, or `failed`
+- **THEN** the row shows: Preview, Download (if done_count > 0), Archive
+- **WHEN** a job's `archived` flag is `true`
+- **THEN** the Archive action is replaced by Unarchive
+
+#### Scenario: Preview row action
+- **WHEN** a user clicks Preview on a job row
+- **THEN** the system sets that job as the active job (PATCH /api/jobs/{id}/active)
+- **THEN** the user is navigated to the Preview tab
+- **THEN** the active job concept is not otherwise surfaced in the UI
+
+#### Scenario: Bulk actions appear on selection
+- **WHEN** one or more rows are selected
+- **THEN** the toolbar shows: count of selected rows, and contextual bulk actions
+- **THEN** Download is shown if any selected job has done_count > 0
+- **THEN** Archive is shown if any selected job is terminal and not archived
+- **THEN** Cancel is shown if any selected job is in draft/pending/processing
+
+#### Scenario: Active/All filter
+- **WHEN** the filter is "Active" (default)
+- **THEN** only jobs with `archived = false` are shown
+- **WHEN** the filter is "All"
+- **THEN** all jobs including archived and cancelled are shown
+
+#### Scenario: Pagination
+- **WHEN** the job list has more than 25 items
+- **THEN** items are paginated at 25 per page
+- **THEN** navigation shows current page, total pages, and previous/next controls
+
+---
+
+### Requirement: URL-based tab routing
+The Data tab SHALL be accessible at a stable URL. Switching between template tabs SHALL update the browser URL, enabling deep links and browser history navigation.
+
+#### Scenario: Tab URLs
+- **WHEN** the Design tab is active: URL is `/app/templates/:id`
+- **WHEN** the Data tab is active: URL is `/app/templates/:id/jobs`
+- **WHEN** the Preview tab is active: URL is `/app/templates/:id/preview`
+- **WHEN** a job detail is open: URL is `/app/templates/:id/jobs/:jobId`
+
+#### Scenario: Deep link to Data tab
+- **WHEN** a user navigates directly to `/app/templates/:id/jobs`
+- **THEN** the Data tab is active and the job table is shown
 
 ---
 

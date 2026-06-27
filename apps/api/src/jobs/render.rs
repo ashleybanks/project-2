@@ -131,6 +131,7 @@ pub async fn update_job_aggregate(db: &sqlx::PgPool, job_item_id: Uuid) -> anyho
             END
         FROM counts c
         WHERE j.id = c.job_id
+          AND j.status != 'cancelled'
         "#,
         job_item_id,
     )

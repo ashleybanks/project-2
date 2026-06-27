@@ -58,6 +58,7 @@ function StatusBadge({ status }: { status: Job["status"] }) {
     done: { label: "Done", cls: "text-emerald-700 bg-emerald-50" },
     partial: { label: "Partial", cls: "text-amber-700 bg-amber-50" },
     failed: { label: "Failed", cls: "text-destructive bg-destructive/10" },
+    cancelled: { label: "Cancelled", cls: "text-muted-foreground bg-muted" },
   }[status];
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${cfg.cls}`}>

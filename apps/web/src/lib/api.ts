@@ -405,6 +405,7 @@ export interface Job {
   name: string;
   status: JobContainerStatus;
   is_active: boolean;
+  archived: boolean;
   total_count: number;
   done_count: number;
   failed_count: number;
@@ -454,6 +455,15 @@ export const downloadJobUrl = (jobId: string) => `/api/jobs/${jobId}/download`;
 
 export const setActiveJob = (jobId: string) =>
   apiFetch<{ job_id: string }>(`/jobs/${jobId}/active`, { method: "PATCH" });
+
+export const archiveJob = (jobId: string) =>
+  apiFetch<void>(`/jobs/${jobId}/archive`, { method: "POST" });
+
+export const unarchiveJob = (jobId: string) =>
+  apiFetch<void>(`/jobs/${jobId}/unarchive`, { method: "POST" });
+
+export const cancelJob = (jobId: string) =>
+  apiFetch<void>(`/jobs/${jobId}/cancel`, { method: "POST" });
 
 export const importDocx = async (file: File): Promise<BlockModel> => {
   const form = new FormData();

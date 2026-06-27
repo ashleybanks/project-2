@@ -74,12 +74,12 @@ export default function TopNav() {
       <div className="ml-auto relative" ref={menuRef}>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-zinc-100 transition-colors"
+          className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-accent transition-colors"
         >
           <span className="text-base text-muted-foreground hidden sm:block max-w-[180px] truncate">
             {user?.name || user?.email}
           </span>
-          <div className="w-8 h-8 rounded-full bg-zinc-200 text-zinc-600 flex items-center justify-center text-base font-semibold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-base font-semibold shrink-0">
             {initials}
           </div>
         </button>
@@ -91,7 +91,7 @@ export default function TopNav() {
                 navigate("/app/settings/account");
                 setOpen(false);
               }}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
             >
               Account settings
             </button>
@@ -100,14 +100,14 @@ export default function TopNav() {
                 navigate("/app/stylesheets");
                 setOpen(false);
               }}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
             >
               Brand rules
             </button>
             <div className="border-t border-border mt-1 pt-1">
               <button
                 onClick={handleSignOut}
-                className="w-full text-left px-3 py-1.5 text-sm text-muted-foreground hover:bg-zinc-50 transition-colors"
+                className="w-full text-left px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent transition-colors"
               >
                 Sign out
               </button>

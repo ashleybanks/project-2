@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTemplate,
@@ -58,8 +58,16 @@ function extractIntentLabels(blocks: PtTopLevel[]): Map<string, string> {
   return result;
 }
 
+function tabFromPath(pathname: string): "design-template" | "preview" | "data" {
+  if (pathname.endsWith("/jobs")) return "data";
+  if (pathname.endsWith("/preview")) return "preview";
+  return "design-template";
+}
+
 export default function TemplatePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
 
   const { data: templateData, isLoading } = useQuery({
@@ -79,9 +87,7 @@ export default function TemplatePage() {
     "idle",
   );
   const [canvasKey, setCanvasKey] = useState(0);
-  const [mode, setMode] = useState<"design-template" | "preview" | "data">(
-    "design-template",
-  );
+  const mode = tabFromPath(location.pathname);
   const [designSubTab, setDesignSubTab] = useState<"template" | "schema">(
     "template",
   );
@@ -97,7 +103,7 @@ export default function TemplatePage() {
   }
 
   function handleModeChange(next: "design-template" | "preview" | "data") {
-    if ((next === "preview" || next === "data") && !panelCollapsed) {
+    if (next === "preview" && !panelCollapsed) {
       panelCollapsedBeforeAutoRef.current = panelCollapsed;
       handlePanelCollapsedChange(true);
     } else if (
@@ -107,7 +113,9 @@ export default function TemplatePage() {
       handlePanelCollapsedChange(panelCollapsedBeforeAutoRef.current);
       panelCollapsedBeforeAutoRef.current = null;
     }
-    setMode(next);
+    const suffix =
+      next === "data" ? "/jobs" : next === "preview" ? "/preview" : "";
+    navigate(`/app/templates/${id}${suffix}`);
   }
 
   const { setTemplateNav, clearTemplateNav } = useTemplateNav();
@@ -270,7 +278,7 @@ export default function TemplatePage() {
       {/* Canvas + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <main
-          className={`flex-1 relative ${mode === "preview" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}
+          className={`flex-1 relative ${mode === "preview" || mode === "data" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}
         >
           {mode === "preview" ? (
             <PreviewPane
@@ -299,17 +307,19 @@ export default function TemplatePage() {
           )}
         </main>
 
-        <RightPanel
-          templateId={id!}
-          stylesheet={stylesheet}
-          blocks={blocks}
-          editorRef={editorRef}
-          onStylesheetChange={setStylesheet}
-          onCreateCheckpoint={(label) => createVersion(id!, label)}
-          onRestore={handleRestore}
-          collapsed={panelCollapsed}
-          onCollapsedChange={handlePanelCollapsedChange}
-        />
+        {mode !== "data" && (
+          <RightPanel
+            templateId={id!}
+            stylesheet={stylesheet}
+            blocks={blocks}
+            editorRef={editorRef}
+            onStylesheetChange={setStylesheet}
+            onCreateCheckpoint={(label) => createVersion(id!, label)}
+            onRestore={handleRestore}
+            collapsed={panelCollapsed}
+            onCollapsedChange={handlePanelCollapsedChange}
+          />
+        )}
       </div>
     </div>
   );

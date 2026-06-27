@@ -14,6 +14,7 @@
     "@fontsource-variable/geist": "^5.2.9",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-heading": "^3.26.0",
     "@tiptap/extension-subscript": "^3.26.0",
     "@tiptap/extension-superscript": "^3.26.0",
